@@ -3,3 +3,66 @@
   font-size: 12px;
   color: lightblue;
 }
+
+.koan-result {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #f3f3f3;
+  border-left: 4px solid #ccc;
+}
+
+.result-header {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.result-header.pass {
+  color: #22863a;
+}
+
+.result-header.fail {
+  color: #cb2431;
+}
+
+.result-header.error {
+  color: #f66a0a;
+}
+
+.result-header.pending {
+  color: #6a737d;
+}
+
+.result-message {
+  margin-bottom: 8px;
+}
+
+.result-details {
+  background-color: #f8f8f8;
+  border: 1px solid #eaecef;
+  padding: 8px;
+  border-radius: 3px;
+  font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  margin-bottom: 8px;
+}
+
+.assertions-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.assertions-list li {
+  margin: 4px 0;
+}
+
+.assertions-list li.passed {
+  color: #22863a;
+}
+
+.assertions-list li.failed {
+  color: #cb2431;
+}

@@ -10,9 +10,12 @@
     "notebookRenderer"
   ],
   "categories": [
-    "Other"
+    "Other",
+    "Notebooks"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onNotebook:python-koans"
+  ],
   "main": "./out/extension/extension.js",
   "browser": "./out/extension/extension.web.js",
   "contributes": {
@@ -23,7 +26,36 @@
         "displayName": "Python Koans",
         "mimeTypes": ["x-application/custom-json-output"]
       }
-    ]
+    ],
+    "notebooks": [
+      {
+        "type": "python-koans",
+        "displayName": "Python Koans",
+        "selector": [
+          {
+            "filenamePattern": "*.koan"
+          },
+          {
+            "filenamePattern": "*.koan.ipynb"
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "python-koans.verifyChallenge",
+        "title": "Verify Current Challenge",
+        "category": "Python Koans"
+      }
+    ],
+    "menus": {
+      "notebook/toolbar": [
+        {
+          "command": "python-koans.verifyChallenge",
+          "when": "notebookType == 'python-koans'"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
