@@ -1,0 +1,80 @@
+{
+    "cells": [
+        {
+            "cell_type": "markdown",
+            "metadata": {
+                "editable": false,
+                "runnable": false,
+                "deletable": false,
+                "koan": {
+                    "role": "instruction"
+                }
+            },
+            "source": [
+                "# Challenge 1",
+                "Write a function that returns true."
+            ]
+        },
+        {
+            "cell_type": "code",
+            "language": "python",
+            "metadata": {
+                "editable": true,
+                "runnable": true,
+                "deletable": false,
+                "koan": {
+                    "role": "solution"
+                }
+            },
+            "source": [
+                "def challenge_01():",
+                "    \"\"\"Return a true boolean value.\"\"\"",
+                "    # Your code here",
+                "    return True"
+            ]
+        },
+        {
+            "cell_type": "markdown",
+            "source": [
+                "# Your Custom Renderer",
+                "This is a Jupyter notebook file.",
+                "Down below, we've created output as if a cell was executed and generated `x-application/custom-json-output` output.",
+                "You can use the **View: Reopen Editor With...** command to view the JSON source of this notebook and change the output data.",
+                "Or, you can installed the Python extension (for example) and replace the code cell below with one that generates the output you expect."
+            ],
+            "metadata": {
+                "editable": false,
+                "runnable": false,
+                "deletable": false,
+                "koan": {
+                    "role": "instruction"
+                }
+            }
+        },
+        {
+            "cell_type": "markdown",
+            "source": "Foo",
+            "metadata": {
+                "editable": false,
+                "runnable": false,
+                "deletable": false,
+                "koan": {
+                    "role": "instruction"
+                }
+            }
+        },
+        {
+            "cell_type": "code",
+            "language": "python",
+            "source": "# <code that creates x-application/custom-json-output output>\nprint(\"Hello, World!\")",
+            "metadata": {
+                "editable": false,
+                "runnable": true,
+                "deletable": false,
+                "koan": {
+                    "role": "instruction"
+                }
+            }
+        }
+    ]
+}

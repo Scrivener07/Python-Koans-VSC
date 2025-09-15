@@ -3,6 +3,15 @@ import * as vscode from 'vscode';
 export class KoanNotebookSerializer implements vscode.NotebookSerializer {
 
 
+    static activate(context: vscode.ExtensionContext) {
+        console.log(context.extensionUri, "Registering notebook serializer");
+
+        // Register a custom notebook serializer.
+        context.subscriptions.push(
+            vscode.workspace.registerNotebookSerializer('python-koans', new KoanNotebookSerializer())
+        );
+    }
+
     // Convert koan file format to notebook data.
     async deserializeNotebook(content: Uint8Array, token: vscode.CancellationToken): Promise<vscode.NotebookData> {
         console.log('Deserializing koan notebook...');

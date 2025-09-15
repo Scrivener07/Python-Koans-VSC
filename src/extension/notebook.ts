@@ -2,6 +2,15 @@ import * as vscode from 'vscode';
 
 
 export class KoanNotebook {
+    static activate(context: vscode.ExtensionContext) {
+        console.log(context.extensionUri, "Registering notebook");
+
+        // Add listener for notebook document changes to enforce read-only behavior.
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeNotebookDocument(KoanNotebook.enforceReadOnly)
+        );
+    }
+
 
     // NOTE: This is additional enforcement to prevent edits to read-only cells.
     //   VS Code allegedly respects the editable flag, so this is mostly a fallback

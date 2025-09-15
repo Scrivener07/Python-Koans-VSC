@@ -2,6 +2,13 @@ import * as vscode from 'vscode';
 
 export class KoanNotebookKernel {
 
+    static activate(context: vscode.ExtensionContext) {
+        console.log(context.extensionUri, "Registering notebook kernel");
+        // Register a custom notebook controller.
+        context.subscriptions.push(KoanNotebookKernel.create());
+    }
+
+
     static create(): vscode.NotebookController {
         // Register a custom notebook controller for executing cells
         const controller = vscode.notebooks.createNotebookController(
