@@ -2,63 +2,51 @@
     "cells": [
         {
             "cell_type": "markdown",
+            "source": "# Challenge 1\nWrite a function that returns true.",
             "metadata": {
                 "editable": false,
                 "runnable": false,
                 "deletable": false,
-                "koan": {
-                    "role": "instruction"
-                }
-            },
-            "source": [
-                "# Challenge 1",
-                "Write a function that returns true."
-            ]
-        },
-        {
-            "cell_type": "code",
-            "language": "python",
-            "metadata": {
-                "editable": true,
-                "runnable": true,
-                "deletable": false,
-                "koan": {
-                    "role": "solution"
-                }
-            },
-            "source": [
-                "def challenge_01():",
-                "    \"\"\"Return a true boolean value.\"\"\"",
-                "    # Your code here",
-                "    return True"
-            ]
-        },
-        {
-            "cell_type": "markdown",
-            "source": [
-                "# Your Custom Renderer",
-                "This is a Jupyter notebook file.",
-                "Down below, we've created output as if a cell was executed and generated `x-application/custom-json-output` output.",
-                "You can use the **View: Reopen Editor With...** command to view the JSON source of this notebook and change the output data.",
-                "Or, you can installed the Python extension (for example) and replace the code cell below with one that generates the output you expect."
-            ],
-            "metadata": {
-                "editable": false,
-                "runnable": false,
-                "deletable": false,
-                "koan": {
+                "custom": {
                     "role": "instruction"
                 }
             }
         },
         {
-            "cell_type": "markdown",
-            "source": "Foo",
+            "cell_type": "code",
+            "language": "python",
+            "source": "def challenge_01():\n    \"\"\"Return a true boolean value.\"\"\"\n    # Your code here\n    return True",
+            "metadata": {
+                "editable": true,
+                "runnable": true,
+                "deletable": false,
+                "custom": {
+                    "role": "solution"
+                }
+            }
+        },
+        {
+            "cell_type": "markup",
+            "language": "markdown",
+            "source": "# Your Custom Renderer",
             "metadata": {
                 "editable": false,
                 "runnable": false,
                 "deletable": false,
-                "koan": {
+                "custom": {
+                    "role": "instruction"
+                }
+            }
+        },
+        {
+            "cell_type": "markup",
+            "language": "markdown",
+            "source": "This is a Jupyter notebook file.\nDown below, we've created output as if a cell was executed and generated `x-application/custom-json-output` output.\nYou can use the **View: Reopen Editor With...** command to view the JSON source of this notebook and change the output data.\nOr, you can installed the Python extension (for example) and replace the code cell below with one that generates the output you expect",
+            "metadata": {
+                "editable": false,
+                "runnable": false,
+                "deletable": false,
+                "custom": {
                     "role": "instruction"
                 }
             }
@@ -71,7 +59,7 @@
                 "editable": false,
                 "runnable": true,
                 "deletable": false,
-                "koan": {
+                "custom": {
                     "role": "instruction"
                 }
             }

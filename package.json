@@ -1,91 +1,98 @@
 {
-  "name": "python-koans",
-  "displayName": "Python Koans",
-  "description": "Learn Python with interactive coding challenges.",
-  "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.104.0"
-  },
-  "keywords": [
-    "notebookRenderer"
-  ],
-  "categories": [
-    "Other",
-    "Notebooks"
-  ],
-  "activationEvents": [
-    "onNotebook:python-koans"
-  ],
-  "main": "./out/extension/extension.js",
-  "browser": "./out/extension/extension.web.js",
-  "contributes": {
-    "notebookRenderer": [
-      {
-        "id": "python-koans",
-        "entrypoint": "./out/client/index.js",
-        "displayName": "Python Koans",
-        "mimeTypes": ["x-application/custom-json-output"]
-      }
+    "name": "python-koans",
+    "displayName": "Python Koans",
+    "description": "Learn Python with interactive coding challenges.",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.104.0"
+    },
+    "keywords": [
+        "notebookRenderer"
     ],
-    "notebooks": [
-      {
-        "type": "python-koans",
-        "displayName": "Python Koans",
-        "selector": [
-          {
-            "filenamePattern": "*.koan"
-          },
-          {
-            "filenamePattern": "*.koan.ipynb"
-          }
-        ]
-      }
+    "categories": [
+        "Other",
+        "Notebooks"
     ],
-    "commands": [
-      {
-        "command": "python-koans.verifyChallenge",
-        "title": "Verify Current Challenge",
-        "category": "Python Koans"
-      }
+    "activationEvents": [
+        "onNotebook:python-koans"
     ],
-    "menus": {
-      "notebook/toolbar": [
-        {
-          "command": "python-koans.verifyChallenge",
-          "when": "notebookType == 'python-koans'"
+    "main": "./out/extension/extension.js",
+    "browser": "./out/extension/extension.web.js",
+    "contributes": {
+        "notebookRenderer": [
+            {
+                "id": "python-koans",
+                "entrypoint": "./out/client/index.js",
+                "displayName": "Python Koans",
+                "mimeTypes": [
+                    "x-application/custom-json-output"
+                ]
+            }
+        ],
+        "notebooks": [
+            {
+                "type": "python-koans",
+                "displayName": "Python Koans Notebook",
+                "selector": [
+                    {
+                        "filenamePattern": "*.koan"
+                    },
+                    {
+                        "filenamePattern": "*.koan.ipynb"
+                    }
+                ]
+            }
+        ],
+        "commands": [
+            {
+                "command": "python-koans.debugNotebook",
+                "title": "Debug Active Koan Notebook",
+                "category": "Python Koans"
+            },
+            {
+                "command": "python-koans.verifyChallenge",
+                "title": "Verify Current Challenge",
+                "category": "Python Koans"
+            }
+        ],
+        "menus": {
+            "notebook/toolbar": [
+                {
+                    "command": "python-koans.verifyChallenge",
+                    "when": "notebookType == 'python-koans'"
+                }
+            ]
         }
-      ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "webpack --mode production",
+        "lint": "eslint src",
+        "watch": "webpack --mode development --watch",
+        "pretest": "webpack --mode development && npm run lint",
+        "test": "vscode-test"
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.10",
+        "@types/node": "22.x",
+        "@types/webpack-env": "^1.18.8",
+        "@typescript-eslint/eslint-plugin": "^8.42.0",
+        "@typescript-eslint/parser": "^8.42.0",
+        "@types/vscode-notebook-renderer": "^1.72.4",
+        "@types/vscode": "^1.104.0",
+        "css-loader": "^7.1.2",
+        "eslint": "^9.34.0",
+        "fork-ts-checker-webpack-plugin": "^9.1.0",
+        "glob": "^11.0.3",
+        "mocha": "^11.7.2",
+        "style-loader": "^4.0.0",
+        "ts-loader": "^9.5.4",
+        "typescript": "^5.9.2",
+        "vscode-notebook-error-overlay": "^1.1.0",
+        "@vscode/test-cli": "^0.0.11",
+        "@vscode/test-electron": "^2.5.2",
+        "util": "^0.12.5",
+        "webpack": "^5.101.3",
+        "webpack-cli": "^6.0.1"
     }
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "webpack --mode production",
-    "lint": "eslint src",
-    "watch": "webpack --mode development --watch",
-    "pretest": "webpack --mode development && npm run lint",
-    "test": "vscode-test"
-  },
-  "devDependencies": {
-    "@types/mocha": "^10.0.10",
-    "@types/node": "22.x",
-    "@types/webpack-env": "^1.18.8",
-    "@typescript-eslint/eslint-plugin": "^8.42.0",
-    "@typescript-eslint/parser": "^8.42.0",
-    "@types/vscode-notebook-renderer": "^1.72.4",
-    "@types/vscode": "^1.104.0",
-    "css-loader": "^7.1.2",
-    "eslint": "^9.34.0",
-    "fork-ts-checker-webpack-plugin": "^9.1.0",
-    "glob": "^11.0.3",
-    "mocha": "^11.7.2",
-    "style-loader": "^4.0.0",
-    "ts-loader": "^9.5.4",
-    "typescript": "^5.9.2",
-    "vscode-notebook-error-overlay": "^1.1.0",
-    "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2",
-    "util": "^0.12.5",
-    "webpack": "^5.101.3",
-    "webpack-cli": "^6.0.1"
-  }
 }
