@@ -8,9 +8,10 @@ export class KoanCustomEditor {
     // Register a custom editor for koan files.
     static activate(context: vscode.ExtensionContext) {
         console.log(context.extensionUri, "Registering custom editor");
+
         // Register the custom editor provider
         context.subscriptions.push(
-            vscode.window.registerCustomEditorProvider(KoanCustomEditorProvider.VIEW_TYPE, new KoanCustomEditorProvider())
+            vscode.window.registerCustomEditorProvider(KoanCustomEditorProvider.VIEW_TYPE, new KoanCustomEditorProvider(context.extensionUri))
         );
     }
 
@@ -18,7 +19,9 @@ export class KoanCustomEditor {
 
 
 class KoanCustomEditorProvider implements vscode.CustomTextEditorProvider {
-    public static readonly VIEW_TYPE = 'python-koans';
+    public static readonly VIEW_TYPE: string = 'python-koans.koanEditor';
+
+    constructor(private extensionUri: vscode.Uri) { }
 
 
     resolveCustomTextEditor(
@@ -30,15 +33,23 @@ class KoanCustomEditorProvider implements vscode.CustomTextEditorProvider {
 
         // Set up the webview's HTML content
         webviewPanel.webview.options = {
-            enableScripts: true
+            enableScripts: true,
+            localResourceRoots: [
+                vscode.Uri.joinPath(this.extensionUri, 'resources')
+            ]
         };
 
-        webviewPanel.webview.html = this.getHtmlForWebview(document);
+
+        const cssUri = webviewPanel.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'resources', 'webview', 'css', 'koan.css')
+        );
+
+        webviewPanel.webview.html = this.getHtmlForWebview(document, cssUri);
 
         // Listen for changes to the document and update the webview
         const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
             if (e.document.uri.toString() === document.uri.toString()) {
-                webviewPanel.webview.html = this.getHtmlForWebview(document);
+                webviewPanel.webview.html = this.getHtmlForWebview(document, cssUri);
             }
         });
 
@@ -58,8 +69,9 @@ class KoanCustomEditorProvider implements vscode.CustomTextEditorProvider {
     }
 
 
-    private getHtmlForWebview(document: vscode.TextDocument): string {
-        const content = document.getText();
+    private getHtmlForWebview(document: vscode.TextDocument, cssUri: vscode.Uri): string {
+        const content: string = document.getText();
+        const escapedContent: string = this.escapeHtml(content);
         return `
             <!DOCTYPE html>
             <html lang="en">
@@ -69,7 +81,7 @@ class KoanCustomEditorProvider implements vscode.CustomTextEditorProvider {
                 <title>Python Koan Editor</title>
             </head>
             <body>
-                <textarea style="width:100%;height:90vh;">${this.escapeHtml(content)}</textarea>
+                <textarea style="width:100%;height:90vh;">${escapedContent}</textarea>
                 <script>
                     const vscode = acquireVsCodeApi();
                     const textarea = document.querySelector('textarea');

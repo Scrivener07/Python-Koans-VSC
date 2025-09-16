@@ -48,50 +48,33 @@
             "activitybar": [
                 {
                     "id": "my-view-container-activity-bar",
-                    "title": "My View-Container Activity-Bar",
-                    "icon": "$(gear)"
-                }
-            ],
-            "panel": [
-                {
-                    "id": "my-view-container-panel",
-                    "title": "My View-Container Panel",
-                    "icon": "$(extensions-star-empty)"
+                    "title": "Python Koan Viewer",
+                    "icon": "$(snake)"
                 }
             ]
         },
         "views": {
-            "explorer": [
-                {
-                    "id": "pythonKoansView",
-                    "type": "webview",
-                    "name": "Python Koans Web-View 1",
-                    "contextualTitle": "Koan View 1",
-                    "icon": "$(snake)",
-                    "when": "resourceExtname == .koan-web"
-                }
-            ],
             "my-view-container-activity-bar": [
                 {
-                    "id": "pythonKoansView2",
+                    "id": "python-koans-webview",
                     "type": "webview",
-                    "name": "Python Koans Web-View 2",
-                    "contextualTitle": "Koan View 2",
-                    "icon": "$(bug)",
-                    "when": "resourceExtname == .koan-web"
-                }
-            ],
-            "my-view-container-panel": [
-                {
-                    "id": "pythonKoansView3",
-                    "type": "webview",
-                    "name": "Python Koans Web-View 3",
-                    "contextualTitle": "Koan View 3",
-                    "icon": "$(lightbulb)",
+                    "name": "Koan View",
+                    "icon": "$(snake)",
                     "when": "resourceExtname == .koan-web"
                 }
             ]
         },
+        "customEditors": [
+            {
+                "viewType": "python-koans.koanEditor",
+                "displayName": "Koan Editor",
+                "selector": [
+                    {
+                        "filenamePattern": "*.koan-web"
+                    }
+                ]
+            }
+        ],
         "notebooks": [
             {
                 "type": "python-koans",

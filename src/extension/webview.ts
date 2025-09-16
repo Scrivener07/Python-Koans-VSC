@@ -5,26 +5,16 @@ import * as vscode from 'vscode';
 export class KoanWebView {
 
     static activate(context: vscode.ExtensionContext) {
-        console.log('Activating Koan Webview extension' + context.extensionUri);
+        console.log(context.extensionUri, 'Activating Koan Webview');
 
         // Register the webview provider
         context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider('pythonKoansView', new KoanWebViewProvider())
-        );
-
-       // Register the webview provider
-        context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider('pythonKoansView2', new KoanWebViewProvider())
-        );
-
-       // Register the webview provider
-        context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider('pythonKoansView3', new KoanWebViewProvider())
+            vscode.window.registerWebviewViewProvider(KoanWebViewProvider.VIEW_TYPE, new KoanWebViewProvider(context.extensionUri))
         );
 
         // Register virtual document provider
         context.subscriptions.push(
-            vscode.workspace.registerTextDocumentContentProvider('koan-cell', new KoanDocumentProvider())
+            vscode.workspace.registerTextDocumentContentProvider(KoanDocumentProvider.VIEW_TYPE, new KoanDocumentProvider())
         );
     }
 }
@@ -32,6 +22,8 @@ export class KoanWebView {
 
 // Register a content provider for virtual code cell documents
 export class KoanDocumentProvider implements vscode.TextDocumentContentProvider {
+    public static readonly VIEW_TYPE: string = 'koan-cell';
+
     private cells = new Map<string, string>();
 
     provideTextDocumentContent(uri: vscode.Uri): string {
@@ -49,16 +41,23 @@ export class KoanDocumentProvider implements vscode.TextDocumentContentProvider 
 
 // Create a custom webview provider
 export class KoanWebViewProvider implements vscode.WebviewViewProvider {
+    public static readonly VIEW_TYPE: string = 'python-koans-webview';
+
+    // Capture the extension URI
+    constructor(private extensionUri: vscode.Uri) {}
+
 
     resolveWebviewView(webviewView: vscode.WebviewView) {
         console.log('Resolving Koan Webview');
 
         webviewView.webview.options = {
             enableScripts: true,
-            // localResourceRoots: [this.extensionUri]
+            localResourceRoots: [
+                vscode.Uri.joinPath(this.extensionUri, 'resources'),
+                vscode.Uri.joinPath(this.extensionUri, 'out')
+            ]
         };
-
-        webviewView.webview.html = this.getWebviewContent();
+        webviewView.webview.html = this.getWebviewContent(webviewView.webview);
 
         // Handle messages from webview
         webviewView.webview.onDidReceiveMessage(message => {
@@ -69,6 +68,7 @@ export class KoanWebViewProvider implements vscode.WebviewViewProvider {
                     break;
                 case 'runTests':
                     console.log('Run tests for cell: ' + message.cellId);
+                    // TODO: Implement test running logic
                     // this.runPythonTests(message.cellId);
                     break;
             }
@@ -84,37 +84,22 @@ export class KoanWebViewProvider implements vscode.WebviewViewProvider {
     }
 
 
-    private getWebviewContent(): string {
+    private getWebviewContent(webview: vscode.Webview): string {
+        // Get URIs for CSS and JS files
+        const css_Uri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'resources', 'webview', 'css', 'koan.css')
+        );
+        const script_Uri = webview.asWebviewUri(
+            vscode.Uri.joinPath(this.extensionUri, 'resources', 'webview', 'js', 'webview.js')
+        );
+
         return `
         <!DOCTYPE html>
         <html>
         <head>
-            <style>
-                .instruction-cell {
-                    background: #f8f9fa;
-                    padding: 1rem;
-                    margin: 1rem 0;
-                    border-radius: 4px;
-                }
-                .code-cell {
-                    border: 1px solid #ddd;
-                    margin: 1rem 0;
-                    border-radius: 4px;
-                }
-                .code-header {
-                    background: #f1f3f4;
-                    padding: 0.5rem;
-                    border-bottom: 1px solid #ddd;
-                }
-                button {
-                    background: #007acc;
-                    color: white;
-                    border: none;
-                    padding: 0.5rem 1rem;
-                    border-radius: 3px;
-                    cursor: pointer;
-                }
-            </style>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link rel="stylesheet" href="${css_Uri}">
         </head>
         <body>
             <div class="instruction-cell">
@@ -129,28 +114,12 @@ export class KoanWebViewProvider implements vscode.WebviewViewProvider {
                 </div>
                 <div id="challenge_01_preview">
                     <pre><code>def challenge_01():
-    # Your code here
-    pass</code></pre>
+                    # Your code here
+                    pass</code></pre>
                 </div>
             </div>
 
-            <script>
-                const vscode = acquireVsCodeApi();
-
-                function openCodeCell(cellId) {
-                    vscode.postMessage({
-                        command: 'openCodeCell',
-                        cellId: cellId
-                    });
-                }
-
-                function runTests(cellId) {
-                    vscode.postMessage({
-                        command: 'runTests',
-                        cellId: cellId
-                    });
-                }
-            </script>
+            <script src="${script_Uri}"></script>
         </body>
         </html>`;
     }

@@ -1,0 +1,41 @@
+.instruction-cell {
+    background: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    border: 1px solid var(--vscode-panel-border);
+}
+
+.code-cell {
+    border: 1px solid var(--vscode-panel-border);
+    margin: 1rem 0;
+    border-radius: 4px;
+    background: var(--vscode-editor-background);
+}
+
+.code-header {
+    background: var(--vscode-titleBar-inactiveBackground);
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+button {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+pre {
+    background: var(--vscode-textCodeBlock-background);
+    padding: 0.5rem;
+    border-radius: 3px;
+    overflow-x: auto;
+}
