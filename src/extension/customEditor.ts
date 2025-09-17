@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { KoanLog } from './KoanLog';
 
 // https://code.visualstudio.com/api/extension-guides/custom-editors
 // https://code.visualstudio.com/api/references/icons-in-labels
@@ -7,7 +8,7 @@ export class KoanEditor {
 
     // Register a custom editor for koan files.
     static activate(context: vscode.ExtensionContext) {
-        console.log(context.extensionUri, "Registering custom editor");
+        KoanLog.info([this, this.activate], 'Activating', context.extensionUri);
 
         // Register the custom editor provider
         context.subscriptions.push(
@@ -19,9 +20,13 @@ export class KoanEditor {
 
 
 class KoanEditorProvider implements vscode.CustomTextEditorProvider {
+
     public static readonly VIEW_TYPE: string = 'python-koans.koanEditor';
 
-    constructor(private extensionUri: vscode.Uri) { }
+    constructor(private extensionUri: vscode.Uri)
+    {
+        KoanLog.info([this.constructor], 'Constructor');
+    }
 
 
     resolveCustomTextEditor(
@@ -59,8 +64,11 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
         });
     }
 
+
     private onDocumentChanged(webviewPanel: vscode.WebviewPanel, document: vscode.TextDocument, e: vscode.TextDocumentChangeEvent): void {
         console.log('Custom editor document changed:', e.document.uri.toString());
+
+        // Check if the changed document is the one we are editing.
         if (e.document.uri.toString() === document.uri.toString()) {
             webviewPanel.webview.html = this.getHtml(document, webviewPanel.webview);
         }
@@ -141,6 +149,12 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
             </head>
             <body>
                 ${KoanEditorProvider.html_Challenge('challenge_01', description, code)}
+                ${KoanEditorProvider.html_Challenge('challenge_02', description, code)}
+                ${KoanEditorProvider.html_Challenge('challenge_03', description, code)}
+                ${KoanEditorProvider.html_Challenge('challenge_04', description, code)}
+                ${KoanEditorProvider.html_Challenge('challenge_05', description, code)}
+
+                <h2>Document Source</h2>
                 ${KoanEditorProvider.html_DocumentSource(escapedContent)}
                 <script src="${script_Uri}"></script>
             </body>
@@ -151,7 +165,8 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
 
     private static html_Challenge(challenge_name: string, description: string, code: string): string {
         return `
-        <div class="challenge-cell">
+        <div class="challenge-block">
+            <h2>${challenge_name}</h2>
             ${KoanEditorProvider.html_InstructionCell(challenge_name, description)}
             ${KoanEditorProvider.html_CodeCell_Preview(challenge_name, code)}
         </div>
@@ -161,7 +176,6 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
     private static html_InstructionCell(challenge_name: string, description: string): string {
         return `
             <div class="instruction-cell">
-                <h2>${challenge_name}</h2>
                 <p>${description}</p>
             </div>
         `;

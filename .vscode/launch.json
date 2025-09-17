@@ -6,13 +6,13 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Run Extension",
+			"name": "Run Extension (C01)",
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
 				"--profile-temp",
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"${workspaceFolder}/example"
+				"${workspaceFolder}/example/files/C01"
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"

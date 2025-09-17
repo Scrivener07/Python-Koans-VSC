@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
+import { KoanLog } from './KoanLog';
 
 export class KoanNotebookSerializer implements vscode.NotebookSerializer {
 
 
     static activate(context: vscode.ExtensionContext) {
-        console.log(context.extensionUri, "Registering notebook serializer");
+        KoanLog.info([this, this.activate], context.extensionUri, "Registering notebook serializer");
 
         // Register a custom notebook serializer.
         context.subscriptions.push(

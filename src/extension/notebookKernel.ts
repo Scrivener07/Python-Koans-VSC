@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
+import { KoanLog } from './KoanLog';
 
 export class KoanNotebookKernel {
 
     static activate(context: vscode.ExtensionContext) {
-        console.log(context.extensionUri, "Registering notebook kernel");
+        KoanLog.info([this, this.activate], "Activating");
         // Register a custom notebook controller.
         context.subscriptions.push(KoanNotebookKernel.create());
     }
@@ -31,7 +32,7 @@ async function executeNotebookCell(
     notebook: vscode.NotebookDocument,
     controller: vscode.NotebookController
 ): Promise<void> {
-    console.log('Koan controller - execution handler');
+    KoanLog.info([KoanNotebookKernel, executeNotebookCell], 'Executing', cells.length, 'cells in notebook', notebook.uri.toString());
     for (const cell of cells) {
         const execution = controller.createNotebookCellExecution(cell);
         execution.start(Date.now());
@@ -60,7 +61,7 @@ async function executeNotebookCell(
 
 // Run Python tests for a cell
 async function runPythonTest(code: string): Promise<any> {
-    console.log('Executing python cell...');
+    KoanLog.info([KoanNotebookKernel, runPythonTest], 'Executing python cell...');
     // TODO: Implement custom test runner logic
     return { result: 'pending', message: 'Test runner not implemented yet' };
 }

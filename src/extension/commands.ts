@@ -1,10 +1,16 @@
 import * as vscode from 'vscode';
+import { KoanLog } from './KoanLog';
 
 // Register commands for the koans workflow.
 export class KoanCommands {
 
+    constructor() {
+        KoanLog.info([this.constructor], 'Constructor');
+    }
+
+
     static activate(context: vscode.ExtensionContext) {
-        console.log(context.extensionUri, "Registering commands");
+        KoanLog.info([KoanCommands, this.activate], 'Activating commands');
 
         // Register commands for the koans workflow.
         context.subscriptions.push(
@@ -16,7 +22,7 @@ export class KoanCommands {
 
 
     static async debugNotebook() {
-        console.log("Handling debugNotebook")
+        KoanLog.info([KoanCommands, this.debugNotebook], "Handling debugNotebook")
 
         const editor = vscode.window.activeNotebookEditor;
         if (!editor) {
@@ -25,13 +31,13 @@ export class KoanCommands {
         }
 
         const cells = editor.notebook.getCells();
-        console.log(`Notebook has ${cells.length} cells`);
+        KoanLog.info([KoanCommands, this.debugNotebook], `Notebook has ${cells.length} cells`);
 
         for (let i = 0; i < cells.length; i++) {
             const cell = cells[i];
-            console.log(`Cell ${i}: ${cell.kind === vscode.NotebookCellKind.Code ? 'Code' : 'Markdown'}`);
-            console.log(`  Editable: ${cell.metadata?.editable}`);
-            console.log(`  Content length: ${cell.document.getText().length} chars`);
+            KoanLog.info([KoanCommands, this.debugNotebook], `Cell ${i}: ${cell.kind === vscode.NotebookCellKind.Code ? 'Code' : 'Markdown'}`);
+            KoanLog.info([KoanCommands, this.debugNotebook], `  Editable: ${cell.metadata?.editable}`);
+            KoanLog.info([KoanCommands, this.debugNotebook], `  Content length: ${cell.document.getText().length} chars`);
         }
 
         vscode.window.showInformationMessage(`Notebook has ${cells.length} cells. See console for details.`);
@@ -39,12 +45,12 @@ export class KoanCommands {
 
 
     static async verifyCurrentChallenge() {
-        console.log("Handling verifyCurrentChallenge")
+        KoanLog.info([KoanCommands, this.verifyCurrentChallenge], "Handling...")
     }
 
 
     static async showView() {
-        console.log("Handling showView")
+        KoanLog.info([KoanCommands, this.showView], "Handling...")
     }
 
 
