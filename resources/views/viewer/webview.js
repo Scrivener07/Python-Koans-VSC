@@ -1,28 +1,22 @@
 const vscode = acquireVsCodeApi();
 
-function openCodeCell(cellId) {
+function onClick_MyButton1(myArg) {
     vscode.postMessage({
-        command: 'openCodeCell',
-        cellId: cellId
+        command: 'MyButton1',
+        myArg: myArg
     });
 }
 
-function runTests(cellId) {
+function onClick_MyButton2(myArg) {
     vscode.postMessage({
-        command: 'runTests',
-        cellId: cellId
+        command: 'MyButton2',
+        myArg: myArg
     });
 }
 
-function updateCellPreview(cellId, content) {
-    const preview = document.getElementById(`${cellId}_preview`);
-    if (preview) {
-        preview.innerHTML = `<pre><code>${escapeHtml(content)}</code></pre>`;
-    }
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+function onClick_MyButton3(myArg) {
+    vscode.postMessage({
+        command: 'MyButton3',
+        myArg: myArg
+    });
 }

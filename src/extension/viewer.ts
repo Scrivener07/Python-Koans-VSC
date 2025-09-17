@@ -1,18 +1,24 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './KoanLog';
+import { KoanLog } from './log';
 
 // https://code.visualstudio.com/api/extension-guides/webview
 
-export class KoanWebView {
+export class KoanPanel {
 
     static activate(context: vscode.ExtensionContext) {
-        KoanLog.info([this, this.activate], context.extensionUri, 'Activating');
+        KoanLog.info([this, this.activate], 'Activating');
 
         context.subscriptions.push(
             vscode.window.registerWebviewViewProvider(KoanWebViewProvider.VIEW_TYPE, new KoanWebViewProvider(context.extensionUri))
         );
     }
 
+}
+
+enum WebViewCommands {
+    MyButton1 = 'MyButton1',
+    MyButton2 = 'MyButton2',
+    MyButton3 = 'MyButton3'
 }
 
 
@@ -32,7 +38,7 @@ export class KoanWebViewProvider implements vscode.WebviewViewProvider {
 
 
     resolveWebviewView(webviewView: vscode.WebviewView) {
-        KoanLog.info([this, this.resolveWebviewView], 'Resolving Koan Webview');
+        KoanLog.info([KoanWebViewProvider, this.resolveWebviewView], 'Resolving...');
 
         // Set up the webview's HTML content.
         webviewView.webview.options = {
@@ -52,10 +58,14 @@ export class KoanWebViewProvider implements vscode.WebviewViewProvider {
 
 
     private onMessage(message: any) {
-        KoanLog.info([this, this.onMessage], 'Received message from webview:', message);
-        // TODO: Handle messages as needed.
+        if (message.command === WebViewCommands.MyButton1) {
+            KoanLog.info([KoanWebViewProvider, this.onMessage], 'MyButton1 clicked with arg:', message.myArg);
+        } else if (message.command === WebViewCommands.MyButton2) {
+            KoanLog.info([KoanWebViewProvider, this.onMessage], 'MyButton2 clicked with arg:', message.myArg);
+        } else if (message.command === WebViewCommands.MyButton3) {
+            KoanLog.info([KoanWebViewProvider, this.onMessage], 'MyButton3 clicked with arg:', message.myArg);
+        }
     }
-
 
 
     private getHtml(webview: vscode.Webview): string {
@@ -78,6 +88,11 @@ export class KoanWebViewProvider implements vscode.WebviewViewProvider {
         <body>
             <h2>Viewer</h2>
             <p>This is the koan viewer.</p>
+            <div class="button-container-vertical">
+                <button onclick="onClick_MyButton1('My Arg Value 1')">My Button 1</button>
+                <button onclick="onClick_MyButton2('My Arg Value 2')">My Button 2</button>
+                <button onclick="onClick_MyButton3('My Arg Value 3')">My Button 3</button>
+            </div>
             <script src="${script_Uri}"></script>
         </body>
         </html>

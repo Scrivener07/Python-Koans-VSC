@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './KoanLog';
+import { KoanLog } from './log';
 
 // https://code.visualstudio.com/api/extension-guides/custom-editors
 // https://code.visualstudio.com/api/references/icons-in-labels
@@ -8,7 +8,7 @@ export class KoanEditor {
 
     // Register a custom editor for koan files.
     static activate(context: vscode.ExtensionContext) {
-        KoanLog.info([this, this.activate], 'Activating', context.extensionUri);
+        KoanLog.info([this, this.activate], 'Activating');
 
         // Register the custom editor provider
         context.subscriptions.push(
@@ -16,6 +16,12 @@ export class KoanEditor {
         );
     }
 
+}
+
+enum EditorCommands {
+    UpdateTextDocument = 'update',
+    OpenCodeCell = 'openCodeCell',
+    RunTests = 'runTests'
 }
 
 
@@ -34,7 +40,7 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
         webviewPanel: vscode.WebviewPanel,
         token: vscode.CancellationToken
     ): void {
-        console.log('Resolving koan editor for', document.uri.toString());
+        KoanLog.info([KoanEditorProvider, this.resolveCustomTextEditor], document.uri.toString());
 
         // Set up the webview's HTML content.
         webviewPanel.webview.options = {
@@ -59,46 +65,45 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
 
         // Clean up when the panel is disposed.
         webviewPanel.onDidDispose(() => {
-            console.log('Disposing custom editor for', document.uri.toString());
+            KoanLog.info([KoanEditorProvider, this.resolveCustomTextEditor], document.uri.toString());
             changeDocumentSubscription.dispose();
         });
     }
 
 
     private onDocumentChanged(webviewPanel: vscode.WebviewPanel, document: vscode.TextDocument, e: vscode.TextDocumentChangeEvent): void {
-        console.log('Custom editor document changed:', e.document.uri.toString());
-
         // Check if the changed document is the one we are editing.
+        // This must be filtered because all document changes are emitted.
         if (e.document.uri.toString() === document.uri.toString()) {
+            KoanLog.info([KoanEditorProvider, this.onDocumentChanged],  e.document.uri.toString());
             webviewPanel.webview.html = this.getHtml(document, webviewPanel.webview);
         }
     }
 
 
     private onMessage(document: vscode.TextDocument, message: any): void {
-        console.log('Received message from webview:', message);
-
+        KoanLog.info([KoanEditorProvider, this.onMessage], message);
         switch (message.command) {
-            case 'update':
+            case EditorCommands.UpdateTextDocument:
                 this.handle_UpdateTextDocument(document, message.text);
                 break;
 
-            case 'openCodeCell':
+            case EditorCommands.OpenCodeCell:
                 this.handle_OpenCodeCell(message.cellId);
                 break;
 
-            case 'runTests':
+            case EditorCommands.RunTests:
                 this.handle_RunTests(document, message.cellId);
                 break;
 
             default:
-                console.warn('Unknown command received from webview:', message.command);
+                KoanLog.warn([KoanEditorProvider, this.onMessage], 'Unhandled command:', message.command);
         }
     }
 
 
     private handle_UpdateTextDocument(document: vscode.TextDocument, value: string) {
-        console.log('Updating document', document.uri.toString());
+        KoanLog.info([KoanEditorProvider, this.handle_UpdateTextDocument], 'Updating document', document.uri.toString());
         const edit = new vscode.WorkspaceEdit();
         const fullRange = new vscode.Range(
             document.positionAt(0),
@@ -110,7 +115,7 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
 
 
     private async handle_OpenCodeCell(cellId: string): Promise<void> {
-        console.log('Opening code cell for in virtual document:', cellId);
+        KoanLog.info([KoanEditorProvider, this.handle_OpenCodeCell], 'Opening code cell for in virtual document:', cellId);
         // Create a virtual document for this code cell.
         const uri = vscode.Uri.parse(`koan-cell:${cellId}.py`);
         const doc = await vscode.workspace.openTextDocument(uri);
@@ -119,13 +124,14 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
 
 
     private handle_RunTests(document: vscode.TextDocument, cellId: string): void {
-        console.log('Running tests for challenge:', cellId);
+        KoanLog.info([KoanEditorProvider, this.handle_RunTests], 'Running tests for challenge:', cellId);
         // Implementation for running tests
     }
 
 
     private getHtml(document: vscode.TextDocument, webview: vscode.Webview): string {
-        console.log(document.uri.toString(), 'Generating HTML for koan editor webview');
+        KoanLog.info([KoanEditorProvider, this.getHtml], document.uri.toString());
+
         const css_Uri = webview.asWebviewUri(
             vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'koan.css')
         );
@@ -148,14 +154,25 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
                 <title>Python Koan Editor</title>
             </head>
             <body>
-                ${KoanEditorProvider.html_Challenge('challenge_01', description, code)}
-                ${KoanEditorProvider.html_Challenge('challenge_02', description, code)}
-                ${KoanEditorProvider.html_Challenge('challenge_03', description, code)}
-                ${KoanEditorProvider.html_Challenge('challenge_04', description, code)}
-                ${KoanEditorProvider.html_Challenge('challenge_05', description, code)}
-
-                <h2>Document Source</h2>
-                ${KoanEditorProvider.html_DocumentSource(escapedContent)}
+                <div>
+                    <h1>Document</h1>
+                    <ul>
+                        <li><b>File:</b> ${document.uri.path.split('/').pop()}</li>
+                        <li><b>Lines:</b> ${document.lineCount}</li>
+                        <li><b>Characters:</b> ${content.length}</li>
+                    </ul>
+                </div>
+                <div>
+                    ${KoanEditorProvider.html_Challenge('challenge_01', description, code)}
+                    ${KoanEditorProvider.html_Challenge('challenge_02', description, code)}
+                    ${KoanEditorProvider.html_Challenge('challenge_03', description, code)}
+                    ${KoanEditorProvider.html_Challenge('challenge_04', description, code)}
+                    ${KoanEditorProvider.html_Challenge('challenge_05', description, code)}
+                </div>
+                <div>
+                    <h2>Document Source</h2>
+                    ${KoanEditorProvider.html_DocumentSource(escapedContent)}
+                </div>
                 <script src="${script_Uri}"></script>
             </body>
             </html>
@@ -166,31 +183,25 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
     private static html_Challenge(challenge_name: string, description: string, code: string): string {
         return `
         <div class="challenge-block">
-            <h2>${challenge_name}</h2>
-            ${KoanEditorProvider.html_InstructionCell(challenge_name, description)}
-            ${KoanEditorProvider.html_CodeCell_Preview(challenge_name, code)}
-        </div>
-        `;
-    }
 
-    private static html_InstructionCell(challenge_name: string, description: string): string {
-        return `
+            <h2>${challenge_name}</h2>
             <div class="instruction-cell">
                 <p>${description}</p>
             </div>
-        `;
-    }
 
-    private static html_CodeCell_Preview(challenge_name: string, code: string): string {
-        return `
-        <div class="code-cell">
-            <div id="${challenge_name}_preview">
-                <pre><code>${code}</code></pre>
+            <div class="code-cell">
+                <textarea id="${challenge_name}_python">${code}</textarea>
             </div>
-        </div>
-        <div class="code-header">
-            <button onclick="openCodeCell('${challenge_name}')">Open Code</button>
-            <button onclick="runTests('${challenge_name}')">Run Tests</button>
+
+            <div id="${challenge_name}_preview" class="code-cell">
+                <pre><code id="${challenge_name}_output">The output will be displayed here.</code></pre>
+            </div>
+
+            <div class="code-header">
+                <button onclick="${EditorCommands.OpenCodeCell}('${challenge_name}')">Open Code</button>
+                <button onclick="${EditorCommands.RunTests}('${challenge_name}')">Run Tests</button>
+            </div>
+
         </div>
         `;
     }

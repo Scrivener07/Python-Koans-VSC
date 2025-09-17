@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './KoanLog';
+import { KoanLog } from './log';
 
 // Register commands for the koans workflow.
 export class KoanCommands {
@@ -10,7 +10,7 @@ export class KoanCommands {
 
 
     static activate(context: vscode.ExtensionContext) {
-        KoanLog.info([KoanCommands, this.activate], 'Activating commands');
+        KoanLog.info([KoanCommands, this.activate], 'Activating');
 
         // Register commands for the koans workflow.
         context.subscriptions.push(

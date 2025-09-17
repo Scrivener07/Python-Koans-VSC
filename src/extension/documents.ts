@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './KoanLog';
+import { KoanLog } from './log';
+
 
 export class KoanDocument {
 
     static activate(context: vscode.ExtensionContext) {
-        KoanLog.info([this, this.activate], 'Activating', context.extensionUri);
+        KoanLog.info([this, this.activate], 'Activating');
 
         // Register virtual document provider
         context.subscriptions.push(

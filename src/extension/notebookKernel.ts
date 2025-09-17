@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './KoanLog';
+import { KoanLog } from './log';
 
 export class KoanNotebookKernel {
 

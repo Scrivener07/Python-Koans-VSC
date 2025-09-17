@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './KoanLog';
+import { KoanLog } from './log';
 
 // Register notebook-related functionality for the koans workflow.
 export class KoanNotebook {
@@ -11,7 +11,7 @@ export class KoanNotebook {
 
 
     static activate(context: vscode.ExtensionContext) {
-        KoanLog.info([this, this.activate], context.extensionUri, "Registering notebook");
+        KoanLog.info([this, this.activate], 'Activating');
 
         // Add listener for notebook document changes to enforce read-only behavior.
         context.subscriptions.push(

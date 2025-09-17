@@ -1,30 +1,32 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './KoanLog';
+import { KoanLog } from './log';
 
 export class KoanNotebookSerializer implements vscode.NotebookSerializer {
+    private static readonly NOTEBOOK_TYPE: string = 'python-koans';
 
 
     static activate(context: vscode.ExtensionContext) {
-        KoanLog.info([this, this.activate], context.extensionUri, "Registering notebook serializer");
+        KoanLog.info([this, this.activate], 'Activating');
 
         // Register a custom notebook serializer.
         context.subscriptions.push(
-            vscode.workspace.registerNotebookSerializer('python-koans', new KoanNotebookSerializer())
+            vscode.workspace.registerNotebookSerializer(KoanNotebookSerializer.NOTEBOOK_TYPE, new KoanNotebookSerializer())
         );
     }
 
+
     // Convert koan file format to notebook data.
     async deserializeNotebook(content: Uint8Array, token: vscode.CancellationToken): Promise<vscode.NotebookData> {
-        console.log('Deserializing koan notebook...');
+        KoanLog.info([KoanNotebookSerializer, this.deserializeNotebook], 'Deserializing notebook...');
 
         // Parse the JSON content from the notebook file.
         const text: string = Buffer.from(content).toString();
         let json;
         try {
             json = JSON.parse(text);
-            console.log('Parsed notebook with', json.cells?.length || 0, 'cells');
+            KoanLog.info([KoanNotebookSerializer, this.deserializeNotebook], 'Parsed notebook with', json.cells?.length || 0, 'cells');
         } catch (error) {
-            console.error('Failed to parse JSON:', error);
+            KoanLog.error([KoanNotebookSerializer, this.deserializeNotebook], 'Failed to parse JSON:', error);
             return new vscode.NotebookData([]);
         }
 
@@ -37,7 +39,7 @@ export class KoanNotebookSerializer implements vscode.NotebookSerializer {
                 cells.push(cell);
             }
             else {
-                console.error('Failed to deserialize cell:', cellData);
+                KoanLog.error([KoanNotebookSerializer, this.deserializeCell], 'Failed to deserialize cell:', cellData);
                 continue;
             }
         }
@@ -46,7 +48,6 @@ export class KoanNotebookSerializer implements vscode.NotebookSerializer {
         const notebook_data: vscode.NotebookData = new vscode.NotebookData(cells);
         return notebook_data;
     }
-
 
 
     private deserializeCell(cellData: any): vscode.NotebookCellData | undefined {
@@ -58,7 +59,7 @@ export class KoanNotebookSerializer implements vscode.NotebookSerializer {
             }
         }
         else {
-            console.log('Cell source is empty or undefined, defaulting to empty string.');
+            KoanLog.info([KoanNotebookSerializer, this.deserializeCell], 'Cell source is empty or undefined, defaulting to empty string.');
             source = '';
         }
 
@@ -88,7 +89,7 @@ export class KoanNotebookSerializer implements vscode.NotebookSerializer {
             // Attempt to create the cell
             cell = new vscode.NotebookCellData(kind, source, language);
         } catch (error) {
-            console.error('Failed to create notebook cell:', error);
+            KoanLog.error([KoanNotebookSerializer, this.deserializeCell], 'Failed to create notebook cell:', error);
             return undefined;
         }
 
@@ -131,7 +132,7 @@ export class KoanNotebookSerializer implements vscode.NotebookSerializer {
 
     // Convert notebook data back to koan format.
     async serializeNotebook(data: vscode.NotebookData, token: vscode.CancellationToken): Promise<Uint8Array> {
-        console.log('Serializing koan notebook...');
+        KoanLog.info([KoanNotebookSerializer, this.serializeNotebook], 'Serializing notebook...');
 
         // Convert notebook data back to JSON format.
         const json = {

@@ -12,17 +12,13 @@ export class KoanLog {
     private static readonly CHANNEL_NAME: string = 'Python Koan'
 
     private static instance: KoanLog | undefined;
-
-    private readonly extensionUri: vscode.Uri
     private readonly logger: vscode.LogOutputChannel;
 
 
-    constructor(extensionUri: vscode.Uri) {
+    constructor() {
         if (KoanLog.instance) {
             throw new Error('A logger instance was already created.');
         }
-
-        this.extensionUri = extensionUri;
         this.logger = vscode.window.createOutputChannel(KoanLog.CHANNEL_NAME, {
             log: true,
         });
@@ -31,9 +27,9 @@ export class KoanLog {
     }
 
 
-    public static create(extensionUri: vscode.Uri): void {
+    public static create(): void {
         if (!KoanLog.instance) {
-            KoanLog.instance = new KoanLog(extensionUri);
+            KoanLog.instance = new KoanLog();
         }
     }
 
@@ -71,7 +67,7 @@ export class KoanLog {
 
     private static toPrefix(site: any[] = []): string {
         let prefix: string = '';
-        if (site) {
+        if (site && site.length > 0) {
             prefix += '[';
             for (let index = 0; index < site.length; index++) {
                 const element: any = site[index];

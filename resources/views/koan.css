@@ -1,3 +1,7 @@
+/* Koan Editor
+--------------------------------------------------
+*/
+
 .challenge-block {
     background: var(--vscode-editor-background);
     color: var(--vscode-editor-foreground);
@@ -6,7 +10,6 @@
     border-radius: 4px;
     border: 1px solid var(--vscode-panel-border);
 }
-
 
 .instruction-cell {
     background: var(--vscode-editor-background);
@@ -29,6 +32,23 @@
     padding: 0.5rem;
     border-bottom: 1px solid var(--vscode-panel-border);
 }
+
+
+/* Vertical Container
+--------------------------------------------------
+*/
+
+.button-container-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+
+/* Common
+--------------------------------------------------
+*/
 
 button {
     background: var(--vscode-button-background);
