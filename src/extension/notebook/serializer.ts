@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './log';
+import { KoanLog } from '../log';
 
 export class KoanNotebookSerializer implements vscode.NotebookSerializer {
     private static readonly NOTEBOOK_TYPE: string = 'python-koans';

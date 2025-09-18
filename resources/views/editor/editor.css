@@ -1,0 +1,215 @@
+/* Challenge Container */
+.challenge-container {
+    background: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 8px;
+    margin: 1rem 0;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Challenge Header */
+.challenge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--vscode-titleBar-inactiveBackground);
+    border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.challenge-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.challenge-title h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.challenge-status {
+    font-size: 1.5rem;
+    color: var(--vscode-descriptionForeground);
+}
+
+.challenge-status[data-status="pass"] {
+    color: var(--vscode-testing-iconPassed);
+}
+
+.challenge-status[data-status="fail"] {
+    color: var(--vscode-testing-iconFailed);
+}
+
+.challenge-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Instructions Panel */
+.challenge-instructions {
+    background: var(--vscode-textBlockQuote-background);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    display: none; /* Initially hidden, toggle with JavaScript */
+}
+
+.challenge-instructions.expanded {
+    display: block;
+}
+
+.instructions-content {
+    padding: 1rem;
+    font-family: var(--vscode-font-family);
+    line-height: 1.6;
+}
+
+/* Code Editor Section */
+.challenge-code-section {
+    border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--vscode-tab-inactiveBackground);
+    border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.code-label {
+    font-weight: 500;
+    color: var(--vscode-tab-activeForeground);
+}
+
+.code-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.code-editor {
+    position: relative;
+}
+
+.code-input {
+    width: 100%;
+    min-height: 200px;
+    padding: 1rem;
+    border: none;
+    background: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    tab-size: 4;
+}
+
+.code-input:focus {
+    background: var(--vscode-editor-background);
+    outline: 2px solid var(--vscode-focusBorder);
+    outline-offset: -2px;
+}
+
+/* Output Section */
+.challenge-output-section {
+    min-height: 120px;
+}
+
+.output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: var(--vscode-tab-inactiveBackground);
+    border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.output-label {
+    font-weight: 500;
+    color: var(--vscode-tab-activeForeground);
+}
+
+.output-content {
+    padding: 1rem;
+    min-height: 80px;
+    background: var(--vscode-terminal-background, var(--vscode-editor-background));
+    font-family: var(--vscode-editor-font-family);
+    font-size: 0.9rem;
+}
+
+.output-placeholder {
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+}
+
+/* Test Result Styling */
+.test-result {
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.test-result.pass {
+    border-left-color: var(--vscode-testing-iconPassed);
+    background: var(--vscode-testing-iconPassed, #22863a)20;
+}
+
+.test-result.fail {
+    border-left-color: var(--vscode-testing-iconFailed);
+    background: var(--vscode-testing-iconFailed, #cb2431)20;
+}
+
+.test-result.error {
+    border-left-color: var(--vscode-testing-iconErrored);
+    background: var(--vscode-testing-iconErrored, #f66a0a)20;
+}
+
+/* Button Styles */
+.btn-primary, .btn-secondary, .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}
+
+.btn-primary:hover {
+    background: var(--vscode-button-hoverBackground);
+}
+
+.btn-secondary {
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+}
+
+.btn-secondary:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.btn-icon {
+    padding: 0.5rem;
+    background: transparent;
+    color: var(--vscode-foreground);
+}
+
+.btn-icon:hover {
+    background: var(--vscode-toolbar-hoverBackground);
+}
+
+.icon {
+    font-size: 1rem;
+}

@@ -4,9 +4,9 @@ import { KoanCommands } from './commands'
 import { KoanEditor } from './editor';
 import { KoanDocument } from './documents';
 import { KoanPanel } from './viewer';
-import { KoanNotebook } from './notebook';
-import { KoanNotebookSerializer } from './notebookSerializer';
-import { KoanNotebookKernel } from './notebookKernel';
+import { KoanNotebook } from './notebook/notebook';
+import { KoanNotebookSerializer } from './notebook/serializer';
+import { KoanNotebookKernel } from './notebook/kernel';
 
 
 export function activate(context: vscode.ExtensionContext) {

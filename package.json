@@ -60,7 +60,7 @@
                     "type": "webview",
                     "name": "Koan View",
                     "icon": "$(snake)",
-                    "when": "resourceExtname == .koan-web"
+                    "when": "resourceExtname == .koan"
                 }
             ]
         },
@@ -70,7 +70,7 @@
                 "displayName": "Koan Editor",
                 "selector": [
                     {
-                        "filenamePattern": "*.koan-web"
+                        "filenamePattern": "*.koan"
                     }
                 ]
             }
@@ -81,10 +81,7 @@
                 "displayName": "Python Koans Notebook",
                 "selector": [
                     {
-                        "filenamePattern": "*.koan"
-                    },
-                    {
-                        "filenamePattern": "*.koan.ipynb"
+                        "filenamePattern": "*.koan-nb"
                     }
                 ]
             }

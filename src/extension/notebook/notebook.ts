@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './log';
+import { KoanLog } from '../log';
 
 // Register notebook-related functionality for the koans workflow.
 export class KoanNotebook {
