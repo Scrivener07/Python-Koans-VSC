@@ -1,43 +1,36 @@
 import * as vscode from 'vscode';
 import { KoanLog } from './log';
 import { KoanData, Challenge } from './koans/data';
+import { EditorCommands } from './shared/commands';
 
 // https://code.visualstudio.com/api/extension-guides/custom-editors
 // https://code.visualstudio.com/api/references/icons-in-labels
 
 export class KoanEditor {
 
-    // Register a custom editor for koan files.
     static activate(context: vscode.ExtensionContext) {
         KoanLog.info([this, this.activate], 'Activating');
-
-        // Register the custom editor provider
-        context.subscriptions.push(
-            vscode.window.registerCustomEditorProvider(KoanEditorProvider.VIEW_TYPE, new KoanEditorProvider(context.extensionUri))
-        );
+        const editorProvider = new KoanEditorProvider(context.extensionUri);
+        const disposable = vscode.window.registerCustomEditorProvider(KoanEditorProvider.VIEW_TYPE, editorProvider);
+        context.subscriptions.push(disposable);
     }
 
 }
 
 
-enum EditorCommands {
-    Document_UpdateText = 'update',
-    Code_RunTests = 'runTests',
-    Code_Reset = 'resetChallenge',
-    Code_OpenCell = 'openCodeCell',
-    Code_Format = 'formatCode',
-    Output_Update = 'updateChallengeOutput',
-    Output_Clear = 'clearOutput'
-}
-
-
 class KoanEditorProvider implements vscode.CustomTextEditorProvider {
 
-    public static readonly VIEW_TYPE: string = 'python-koans.koanEditor';
+    /** The view type for the custom editor.
+     * This should match the `viewType` specified in `package.json`.
+    */
+    public static readonly VIEW_TYPE: string = 'python-koans.editor';
+
+    private extensionUri: vscode.Uri;
 
 
-    constructor(private extensionUri: vscode.Uri) {
+    constructor(extensionUri: vscode.Uri) {
         KoanLog.info([this.constructor], 'Constructor');
+        this.extensionUri = extensionUri;
     }
 
 
@@ -53,15 +46,16 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
             enableScripts: true,
             // enableCommandUris: true,
             localResourceRoots: [
+                vscode.Uri.joinPath(this.extensionUri, 'out/webview'),
                 vscode.Uri.joinPath(this.extensionUri, 'resources')
             ]
         };
 
         // Set the webview's initial HTML content.
-        webviewPanel.webview.html = this.getHtml(document, webviewPanel.webview);
+        webviewPanel.webview.html = View.getHtml(this.extensionUri, document, webviewPanel.webview);
 
         // Handle messages from the webview.
-        webviewPanel.webview.onDidReceiveMessage(message =>
+        const messageSubscription = webviewPanel.webview.onDidReceiveMessage(message =>
             this.onMessage(webviewPanel, document, message)
         );
 
@@ -73,6 +67,7 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
         // Clean up when the panel is disposed.
         webviewPanel.onDidDispose(() => {
             KoanLog.info([KoanEditorProvider, this.resolveCustomTextEditor], document.uri.toString());
+            messageSubscription.dispose();
             changeDocumentSubscription.dispose();
         });
     }
@@ -83,7 +78,7 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
         // This must be filtered because all document changes are emitted.
         if (e.document.uri.toString() === document.uri.toString()) {
             KoanLog.info([KoanEditorProvider, this.onDocumentChanged], e.document.uri.toString());
-            webviewPanel.webview.html = this.getHtml(document, webviewPanel.webview);
+            webviewPanel.webview.html = View.getHtml(this.extensionUri, document, webviewPanel.webview);
         }
     }
 
@@ -95,7 +90,7 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
                 this.handle_UpdateTextDocument(document, message.text);
                 break;
 
-            case EditorCommands.Code_OpenCell:
+            case EditorCommands.Code_OpenVirtual:
                 this.handle_CodeOpenVirtual(message.member_id);
                 break;
 
@@ -130,6 +125,7 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
     }
 
 
+    // Test Execution
     //--------------------------------------------------
 
     private async handle_RunTests(webviewPanel: vscode.WebviewPanel, document: vscode.TextDocument, member_id: string): Promise<void> {
@@ -173,33 +169,43 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
     }
 
 
-    // HTML
-    //--------------------------------------------------
+}
 
-    private getHtml(document: vscode.TextDocument, webview: vscode.Webview): string {
-        KoanLog.info([KoanEditorProvider, this.getHtml], document.uri.toString());
+
+class View {
+
+
+    public static getHtml(extensionUri: vscode.Uri, document: vscode.TextDocument, webview: vscode.Webview): string {
+        KoanLog.info([View, View.getHtml], document.uri.toString());
 
         const css_common = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'koan.css')
+            vscode.Uri.joinPath(extensionUri, 'resources', 'views', 'koan.css')
         );
 
         const css_editor = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'editor', 'editor.css')
+            vscode.Uri.joinPath(extensionUri, 'resources', 'views', 'editor', 'editor.css')
         );
 
+        // Original - works during development, but not when packaged
+        // const script_Uri = webview.asWebviewUri(
+        //     vscode.Uri.joinPath(extensionUri, 'resources', 'views', 'editor', 'editor.js')
+        // );
+
+        // Attempt 1 (webpack)
         const script_Uri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'editor', 'editor.js')
+            vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'editor', 'editor.js')
         );
+
 
         const data: KoanData = new KoanData();
         let challenges_html: string = '';
         for (const [name, challenge] of data.cells) {
-            KoanLog.info([KoanEditorProvider, this.getHtml], `Challenge: ${name} - ${challenge.description()}.`);
-            challenges_html += KoanEditorProvider.html_Challenge(challenge);
+            KoanLog.info([View, View.getHtml], `Challenge: ${name} - ${challenge.description()}.`);
+            challenges_html += View.html_Challenge(challenge);
         }
 
         const content: string = document.getText();
-        const escapedContent: string = this.escapeHtml(content);
+        const escapedContent: string = View.escapeHtml(content);
         return `
             <!DOCTYPE html>
             <html lang="en">
@@ -336,7 +342,7 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
             </div>
 
             <div class="code-buttons">
-                <button onclick="${EditorCommands.Code_OpenCell}('${challenge.name}')">Open Code</button>
+                <button onclick="${EditorCommands.Code_OpenVirtual}('${challenge.name}')">Open Code</button>
                 <button onclick="${EditorCommands.Code_RunTests}('${challenge.name}')">Run Tests</button>
             </div>
 
@@ -345,7 +351,7 @@ class KoanEditorProvider implements vscode.CustomTextEditorProvider {
     }
 
 
-    private escapeHtml(text: string): string {
+    private static escapeHtml(text: string): string {
         return text.replace(/[&<>"']/g, (markup) => ({
             '&': '&amp;',
             '<': '&lt;',

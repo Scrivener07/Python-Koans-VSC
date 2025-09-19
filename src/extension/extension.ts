@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { KoanLog } from './log';
-import { KoanCommands } from './commands'
+import { KoanCommands } from './commands';
 import { KoanEditor } from './editor';
 import { KoanDocument } from './documents';
 import { KoanPanel } from './viewer';
