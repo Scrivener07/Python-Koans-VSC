@@ -1,18 +1,45 @@
 export class KoanData {
 
-    public readonly cells: Map<string, Challenge>;
+    private static readonly DEFAULT_INSTRUCTION: string = `
+    Return a message based on the provided \`score\`.
 
-    private static readonly DEFAULT_INSTRUCTION: string = 'This is a description of the challenge.';
-    private static readonly DEFAULT_CODE: string = '# Your code here\nprint(\"Hello World!\")\npass';
+    Messages:
+    - \`Excellent\` if score >= 90
+    - \`Good\` if score >= 75
+    - \`Pass\` if score >= 60
+    - \`Fail\` otherwise
+
+    Returns:
+        \`str\`: The message corresponding to the score.
+
+    Hint:
+        Uses the \`if\`, \`elif\`, and \`else\` conditional statements.
+    `;
+
+    private static readonly DEFAULT_CODE: string = `
+    # Your code here
+    print("Hello World!")
+    if score >= 90:
+        return "Excellent"
+    elif score >= 75:
+        return "Good"
+    elif score >= 60:
+        return "Pass"
+    else:
+        return "Fail"
+    `;
+
+
+    public readonly challenges: Map<string, Challenge>;
 
 
     constructor() {
-        this.cells = new Map<string, Challenge>();
+        this.challenges = new Map<string, Challenge>();
 
         // Initialize with some example challenges.
         const challenges = this.data_default();
         for (const challenge of challenges) {
-            this.cells.set(challenge.name, challenge);
+            this.challenges.set(challenge.name, challenge);
         }
     }
 

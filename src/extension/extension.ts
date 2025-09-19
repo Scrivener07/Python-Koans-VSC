@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { KoanLog } from './log';
 import { KoanCommands } from './commands';
-import { KoanEditor } from './editor';
-import { KoanDocument } from './documents';
-import { KoanPanel } from './viewer';
+import { KoanEditor } from './koan/provider';
+import { KoanDocument } from './koan/documents';
+import { KoanPanel } from './koan-overview/provider';
 import { KoanNotebook } from './notebook/notebook';
 import { KoanNotebookSerializer } from './notebook/serializer';
 import { KoanNotebookKernel } from './notebook/kernel';

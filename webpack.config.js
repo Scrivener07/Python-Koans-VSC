@@ -38,14 +38,6 @@ const makeConfig = (argv, { entry, out, target, libraryType }) => ({
 // This is necessary since the extension and the client have different targets (node and web)
 // and different library types (commonjs and module)
 module.exports = (env, argv) => [
-    // Koan notebook renderer for the web (browser)
-    makeConfig(argv, {
-        entry: './src/client/index.ts',
-        out: './out/client/index.js',
-        target: 'web',
-        library: 'module'
-    }),
-
     // The extension build for node (vscode)
     makeConfig(argv, {
         entry: './src/extension/extension.ts',
@@ -60,11 +52,18 @@ module.exports = (env, argv) => [
         target: 'webworker'
     }),
 
+    // Koan notebook renderer for the web (browser)
+    makeConfig(argv, {
+        entry: './src/client/index.ts',
+        out: './out/client/index.js',
+        target: 'web',
+        library: 'module'
+    }),
+
     // A koan document webview
     makeConfig(argv, {
-        entry: './src/webview/editor.ts',
-        // out: './resources/views/editor/editor.js',
-        out: './out/webview//editor/editor.js',
+        entry: './src/webview/index.ts',
+        out: './out/webview/editor/index.js',
         target: 'web',
         // library: 'var'  // Use standard variable exports
         // NOTE: No libraryType needed with `library: 'var' `

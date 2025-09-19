@@ -1,16 +1,13 @@
 import * as vscode from 'vscode';
-import { KoanLog } from './log';
+import { KoanLog } from '../log';
 
 // https://code.visualstudio.com/api/extension-guides/webview
 
 export class KoanPanel {
 
-    static activate(context: vscode.ExtensionContext) {
+    public static activate(context: vscode.ExtensionContext) {
         KoanLog.info([this, this.activate], 'Activating');
-
-        context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider(KoanWebViewProvider.VIEW_TYPE, new KoanWebViewProvider(context.extensionUri))
-        );
+        context.subscriptions.push(KoanWebViewProvider.register(context));
     }
 
 }
@@ -27,6 +24,12 @@ export class KoanWebViewProvider implements vscode.WebviewViewProvider {
     public static readonly VIEW_TYPE: string = 'python-koans-webview';
 
     private extensionUri: vscode.Uri;
+
+
+    public static register(context: vscode.ExtensionContext): vscode.Disposable {
+        const provider = new KoanWebViewProvider(context.extensionUri);
+        return vscode.window.registerWebviewViewProvider(KoanWebViewProvider.VIEW_TYPE, provider);
+    }
 
 
     // Capture the extension URI
