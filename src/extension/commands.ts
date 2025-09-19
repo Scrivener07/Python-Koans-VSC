@@ -22,7 +22,7 @@ export class KoanCommands {
 
 
     static async debugNotebook() {
-        KoanLog.info([KoanCommands, this.debugNotebook], "Handling debugNotebook")
+        KoanLog.info([KoanCommands, this.debugNotebook], "Handling debugNotebook");
 
         const editor = vscode.window.activeNotebookEditor;
         if (!editor) {
@@ -45,12 +45,12 @@ export class KoanCommands {
 
 
     static async verifyCurrentChallenge() {
-        KoanLog.info([KoanCommands, this.verifyCurrentChallenge], "Handling...")
+        KoanLog.info([KoanCommands, this.verifyCurrentChallenge], "Handling...");
     }
 
 
     static async showView() {
-        KoanLog.info([KoanCommands, this.showView], "Handling...")
+        KoanLog.info([KoanCommands, this.showView], "Handling...");
     }
 
 

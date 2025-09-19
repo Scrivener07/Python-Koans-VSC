@@ -9,7 +9,7 @@ export enum LogLevel {
 
 // A singleton logger for this extension.
 export class KoanLog {
-    private static readonly CHANNEL_NAME: string = 'Python Koan'
+    private static readonly CHANNEL_NAME: string = 'Python Koan';
 
     private static instance: KoanLog | undefined;
     private readonly logger: vscode.LogOutputChannel;
@@ -71,7 +71,7 @@ export class KoanLog {
             prefix += '[';
             for (let index = 0; index < site.length; index++) {
                 const element: any = site[index];
-                if (index == 0) {
+                if (index === 0) {
                     prefix += element.name;
                 }
                 else {

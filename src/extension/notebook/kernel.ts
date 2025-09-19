@@ -24,7 +24,7 @@ export class KoanNotebookKernel {
         controller.supportedLanguages = [KoanNotebookKernel.LANGUAGE_PYTHON];
         controller.supportsExecutionOrder = true;
         controller.executeHandler = KoanNotebookKernel.onExecute;
-        return controller
+        return controller;
     }
 
 
