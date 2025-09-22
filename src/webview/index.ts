@@ -1,5 +1,5 @@
-import { DocumentInfo, TestResult } from "./messaging";
 import { createChallengeElement } from './challenge';
+import { EditorCommands, TestResult, DocumentInfo } from '../shared/messaging';
 
 
 // VS Code API
@@ -42,10 +42,10 @@ function onMessage(event: MessageEvent<any>) {
     console.log('Message received from extension:', event.data);
     const message = event.data;
     switch (message.command) {
-        case 'initialize':
+        case EditorCommands.Data_Initialize:
             onMessage_Initialize(message.documentInfo, message.challenges);
             break;
-        case 'updateChallengeOutput':
+        case EditorCommands.Output_Update:
             onMessage_OutputUpdate(message.member_id!, message.result!);
             break;
         default:
@@ -63,7 +63,7 @@ function document_preview_raw() {
         textarea.addEventListener('input', () => {
             // The text of the actual `*.koan` file json data.
             vscode.postMessage({
-                command: 'update',
+                command: EditorCommands.Document_UpdateText,
                 text: textarea.value
             });
         });
@@ -122,7 +122,7 @@ function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
     if (textarea) {
         textarea.addEventListener('input', () => {
             vscode.postMessage({
-                command: 'update',
+                command: EditorCommands.Document_UpdateText,
                 text: textarea.value
             });
         });
@@ -136,14 +136,14 @@ function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
 // Challenge Functions
 function Code_RunTest(member_id: string): void {
     vscode.postMessage({
-        command: 'runTests',
+        command: EditorCommands.Code_RunTests,
         member_id: member_id
     });
 }
 
 function Code_OpenVirtual(member_id: string): void {
     vscode.postMessage({
-        command: 'openCodeCell',
+        command: EditorCommands.Code_OpenVirtual,
         member_id: member_id
     });
 }
@@ -157,14 +157,14 @@ function onClick_InstructionToggle(challenge_id: string): void {
 
 function Code_Reset(member_id: string): void {
     vscode.postMessage({
-        command: 'resetChallenge',
+        command: EditorCommands.Code_Reset,
         member_id: member_id
     });
 }
 
 function Code_Format(member_id: string): void {
     vscode.postMessage({
-        command: 'formatCode',
+        command: EditorCommands.Code_Format,
         member_id: member_id
     });
 }
@@ -176,7 +176,7 @@ function Output_Clear(member_id: string): void {
     }
 
     vscode.postMessage({
-        command: 'clearOutput',
+        command: EditorCommands.Output_Clear,
         member_id: member_id
     });
 }

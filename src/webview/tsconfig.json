@@ -1,11 +1,27 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ES2020",
-    "strict": true,
-    "esModuleInterop": true,
-    "lib": ["DOM", "ES2020"],
-    "sourceMap": true,
-    "rootDir": "."
-  }
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "ES2020",
+        "strict": true,
+        "esModuleInterop": true,
+        "lib": [
+            "DOM",
+            "ES2020"
+        ],
+        "sourceMap": true,
+        "rootDir": ".",
+        "paths": {
+            "../shared/*": [
+                "../shared/*"
+            ]
+        }
+    },
+    "references": [
+        {
+            "path": "../shared"
+        }
+    ],
+    "include": [
+        "**/*"
+    ]
 }

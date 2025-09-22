@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import { KoanLog } from '../log';
-import { Challenge, KoanData } from './data';
-import { EditorCommands } from './messaging';
+import { Challenge } from './data';
+import { EditorCommands } from '../../shared';
 import { KoanDocumentProvider } from './documents';
 import { Python } from './runner';
-import path from 'path';
+import path from 'path'; // TODO: Reconsider using this import if possible.
 
 // https://code.visualstudio.com/api/extension-guides/webview
 

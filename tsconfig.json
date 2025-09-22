@@ -12,6 +12,9 @@
     },
     {
       "path": "./src/webview"
+    },
+    {
+      "path": "./src/shared"
     }
   ]
 }

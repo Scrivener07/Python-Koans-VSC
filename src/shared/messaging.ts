@@ -32,3 +32,16 @@ export interface WebviewMessage {
     text?: string;
     code?: string;
 }
+
+
+// Message Types
+//--------------------------------------------------
+// Define message types.
+
+export interface DocumentInfo {
+    fileName: string;
+    uri: string;
+    lineCount: number;
+    content: string;
+    language: string;
+}

@@ -1,76 +1,162 @@
+// Imports
+//--------------------------------------------------
+require('webpack');
+
+/** Core Node.js module for handling file paths. */
 const path = require('path');
+
+/** Runs TypeScript type checking in a separate process for faster builds. */
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
-const { DefinePlugin } = require('webpack');
 
 
-const makeConfig = (argv, { entry, out, target, libraryType }) => ({
-    mode: argv.mode,
-    devtool: argv.mode === 'development' ? 'source-map' : undefined,
-    entry,
-    target,
-    output: {
-        path: path.resolve(__dirname, path.dirname(out)),
-        filename: path.basename(out),
-        libraryTarget: libraryType || 'commonjs2'
-    },
-    externals: {
-        vscode: 'commonjs vscode'
-    },
-    resolve: {
-        extensions: ['.ts', '.js']
-    },
-    module: {
-        rules: [
-            {
-                test: /\.ts$/,
-                exclude: /node_modules/,
-                use: 'ts-loader'
-            }
+// Shared Configuration Template
+//--------------------------------------------------
+
+const makeConfig = (argv, { entry, out, target, libraryType, resolve = {} }) => {
+    const config = {
+        mode: argv.mode,
+        devtool: argv.mode === 'development' ? 'source-map' : undefined,
+        entry,
+        target,
+        output: {
+            path: path.resolve(__dirname, path.dirname(out)),
+            filename: path.basename(out),
+        },
+        externals: {
+            vscode: 'commonjs vscode'
+        },
+        resolve: {
+            extensions: ['.ts', '.js'],
+            ...resolve // Merge any additional resolve options
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.ts$/,
+                    exclude: /node_modules/,
+                    use: 'ts-loader'
+                }
+            ]
+        },
+        plugins: [
+            new ForkTsCheckerWebpackPlugin()
         ]
-    },
-    plugins: [
-        new ForkTsCheckerWebpackPlugin()
-    ]
-});
+    };
+
+    // Handle ES module output vs regular CommonJS output
+    if (libraryType === 'module') {
+        config.experiments = { outputModule: true };
+        config.output.library = { type: 'module' };
+    } else {
+        config.output.libraryTarget = libraryType || 'commonjs2';
+    }
+
+    return config;
+};
 
 
-// Export multiple configurations
-// This is necessary since the extension and the client have different targets (node and web)
-// and different library types (commonjs and module)
+// Export Configurations
+//--------------------------------------------------
+
 module.exports = (env, argv) => [
-    // The extension build for node (vscode)
+
+    // Extension Desktop (vscode)
+    //--------------------------------------------------
+    // Main extension desktop build for VS Code Node.js.
+    // - Has full access to Node.js APIs.
+    // - Required: Used for basic functionality.
     makeConfig(argv, {
         entry: './src/extension/extension.ts',
         out: './out/extension/extension.js',
         target: 'node'
     }),
 
-    // The extension build for web (webworker)
+
+    // Extension Web Browser (webworker)
+    //--------------------------------------------------
+    // Extension build for web browser (vscode.dev).
+    // - Uses polyfills for Node.js modules.
+    // - Optional: Used for web browser VS Code (vscode.dev).
     makeConfig(argv, {
         entry: './src/extension/extension.ts',
         out: './out/extension/extension.web.js',
-        target: 'webworker'
+        target: 'webworker',
+        resolve: {
+            fallback: {
+                "path": require.resolve("path-browserify"),
+                "child_process": false
+            }
+        }
     }),
 
-    // Koan notebook renderer for the web (browser)
+
+    // Notebook Renderer (web/browser)
+    //--------------------------------------------------
+    // Extension build for Jupyter notebook renderer.
+    // - Required: Used for notebook rendering web/desktop.
     makeConfig(argv, {
         entry: './src/client/index.ts',
         out: './out/client/index.js',
         target: 'web',
-        library: 'module'
+        libraryType: 'module',
+        resolve: {
+            fallback: {
+                "path": require.resolve("path-browserify"),
+                "child_process": false
+            }
+        }
     }),
 
-    // A koan document webview
-    makeConfig(argv, {
-        entry: './src/webview/index.ts',
-        out: './out/webview/editor/index.js',
+
+    // Document Editor (webview)
+    //--------------------------------------------------
+    // Extension build for custom document editor.
+    // - Required: Used for custom editor webviews.
+    {
+        mode: argv.mode,
+        devtool: argv.mode === 'development' ? 'source-map' : undefined,
+        entry: {
+            'editor/index': './src/webview/index.ts'
+        },
         target: 'web',
-        // library: 'var'  // Use standard variable exports
-        // NOTE: No libraryType needed with `library: 'var' `
-        // - current implementation uses default 'commonjs2'.
-    }),
+        output: {
+            path: path.resolve(__dirname, './out/webview'),
+            filename: '[name].js',
+            library: {
+                type: 'module'
+            }
+        },
+        experiments: {
+            outputModule: true  // THIS WAS THE MISSING PIECE
+        },
+        externals: {
+            vscode: 'commonjs vscode'
+        },
+        resolve: {
+            extensions: ['.ts', '.js'],
+            fallback: {
+                "path": require.resolve("path-browserify"),
+                "child_process": false
+            }
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.ts$/,
+                    exclude: /node_modules/,
+                    use: 'ts-loader'
+                }
+            ]
+        },
+        plugins: [
+            new ForkTsCheckerWebpackPlugin()
+        ]
+    }
+];
 
 
+// Scafolded Configuration (yo code)
+//--------------------------------------------------
 
 // WebView - I'm removing this until I get the basic build working again.
 // I'll add it back later when the extension builds successfully.
@@ -147,6 +233,3 @@ module.exports = (env, argv) => [
 //         level: "log", // enables logging required for problem matchers
 //     },
 // });
-
-
-];
