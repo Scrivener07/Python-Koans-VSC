@@ -12,13 +12,13 @@
         "rootDir": ".",
         "paths": {
             "../shared/*": [
-                "../shared/*"
+                "../../shared/*"
             ]
         }
     },
     "references": [
         {
-            "path": "../shared"
+            "path": "../../shared"
         }
     ],
     "include": [

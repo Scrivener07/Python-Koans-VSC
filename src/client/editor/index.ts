@@ -1,5 +1,5 @@
 import { createChallengeElement } from './challenge';
-import { EditorCommands, TestResult, DocumentInfo } from '../shared/messaging';
+import { EditorCommands, TestResult, DocumentInfo } from '../../shared/messaging';
 
 
 // VS Code API

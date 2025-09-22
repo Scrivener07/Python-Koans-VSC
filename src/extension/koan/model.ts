@@ -37,7 +37,7 @@ export class EditorModel implements vscode.Disposable {
         this.panel = panel;
         this.extensionUri = extensionUri;
 
-        this.rootWeb = vscode.Uri.joinPath(this.extensionUri, 'out/webview');
+        this.rootWeb = vscode.Uri.joinPath(this.extensionUri, 'out/client/editor');
         this.rootResource = vscode.Uri.joinPath(this.extensionUri, 'resources');
 
         // Setup disposable event handlers.
@@ -201,7 +201,7 @@ export class EditorModel implements vscode.Disposable {
         KoanLog.info([EditorModel, this.render_index], this.document.uri.toString());
         const editor_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootResource, 'views', 'editor', 'editor.css'));
         const common_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootResource, 'views', 'koan.css'));
-        const script_js = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootWeb, 'editor', 'index.js'));
+        const script_js = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootWeb, 'index.js'));
         return `
         <!DOCTYPE html>
         <html lang="en">

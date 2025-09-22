@@ -94,8 +94,8 @@ module.exports = (env, argv) => [
     // Extension build for Jupyter notebook renderer.
     // - Required: Used for notebook rendering web/desktop.
     makeConfig(argv, {
-        entry: './src/client/index.ts',
-        out: './out/client/index.js',
+        entry: './src/client/notebook/index.ts',
+        out: './out/client/notebook/index.js',
         target: 'web',
         libraryType: 'module'
     }),
@@ -109,11 +109,11 @@ module.exports = (env, argv) => [
         mode: argv.mode,
         devtool: argv.mode === 'development' ? 'source-map' : undefined,
         entry: {
-            'editor/index': './src/webview/index.ts'
+            'index': './src/client/editor/index.ts'
         },
         target: 'web',
         output: {
-            path: path.resolve(__dirname, './out/webview'),
+            path: path.resolve(__dirname, './out/client/editor'),
             filename: '[name].js',
             library: {
                 type: 'module'
