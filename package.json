@@ -120,7 +120,6 @@
         "fork-ts-checker-webpack-plugin": "^9.1.0",
         "glob": "^11.0.3",
         "mocha": "^11.7.2",
-        "path-browserify": "^1.0.1",
         "style-loader": "^4.0.0",
         "ts-loader": "^9.5.4",
         "typescript": "^5.9.2",

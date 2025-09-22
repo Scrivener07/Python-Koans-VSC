@@ -68,9 +68,3 @@ create python-koans\example\notebook.ipynb
 create python-koans\.gitignore
 create python-koans\.gitattributes
 ```
-
-
-## Installed Packages
-```shell
-npm install path-browserify --save-dev
-```

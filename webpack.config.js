@@ -83,7 +83,6 @@ module.exports = (env, argv) => [
         target: 'webworker',
         resolve: {
             fallback: {
-                "path": require.resolve("path-browserify"),
                 "child_process": false
             }
         }
@@ -98,13 +97,7 @@ module.exports = (env, argv) => [
         entry: './src/client/index.ts',
         out: './out/client/index.js',
         target: 'web',
-        libraryType: 'module',
-        resolve: {
-            fallback: {
-                "path": require.resolve("path-browserify"),
-                "child_process": false
-            }
-        }
+        libraryType: 'module'
     }),
 
 
@@ -127,17 +120,13 @@ module.exports = (env, argv) => [
             }
         },
         experiments: {
-            outputModule: true  // THIS WAS THE MISSING PIECE
+            outputModule: true
         },
         externals: {
             vscode: 'commonjs vscode'
         },
         resolve: {
-            extensions: ['.ts', '.js'],
-            fallback: {
-                "path": require.resolve("path-browserify"),
-                "child_process": false
-            }
+            extensions: ['.ts', '.js']
         },
         module: {
             rules: [

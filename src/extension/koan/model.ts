@@ -4,7 +4,6 @@ import { Challenge } from './data';
 import { EditorCommands } from '../../shared';
 import { KoanDocumentProvider } from './documents';
 import { Python } from './runner';
-import path from 'path'; // TODO: Reconsider using this import if possible.
 
 // https://code.visualstudio.com/api/extension-guides/webview
 
@@ -166,9 +165,9 @@ export class EditorModel implements vscode.Disposable {
 
     private async get_python_document(koanData: any): Promise<vscode.TextDocument> {
         // Resolve the Python file path relative to the koan file.
-        const koanDir = path.dirname(this.document.uri.fsPath);
-        const pythonFilePath = path.resolve(koanDir, koanData.python);
-        const pythonFileUri = vscode.Uri.file(pythonFilePath);
+        const koanUri = this.document.uri;
+        const koanDirUri = vscode.Uri.joinPath(koanUri, '..');
+        const pythonFileUri = vscode.Uri.joinPath(koanDirUri, koanData.python);
 
         // Load t1he Python document
         return await vscode.workspace.openTextDocument(pythonFileUri);
@@ -319,8 +318,6 @@ export class EditorModel implements vscode.Disposable {
 
     private async handle_CodeOpenVirtual(member_id: string): Promise<void> {
         KoanLog.info([EditorModel, this.handle_CodeOpenVirtual], 'ID:', member_id);
-
-
         // Create a virtual document for this code member.
         const uri = vscode.Uri.parse(`${KoanDocumentProvider.VIEW_TYPE}:${member_id}.py`);
         const doc = await vscode.workspace.openTextDocument(uri);
