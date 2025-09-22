@@ -1,19 +1,10 @@
 import * as vscode from 'vscode';
 import { KoanLog } from '../log';
 
-
-export class KoanDocument {
-
-    public static activate(context: vscode.ExtensionContext) {
-        KoanLog.info([this, this.activate], 'Activating');
-
-        // Register virtual document provider
-        context.subscriptions.push(KoanDocumentProvider.register(context));
-    }
-}
-
-
-// Register a content provider for virtual code cell documents.
+/**
+ * A provider for virtual documents representing individual code cells.
+ * Each virtual document corresponds to a code snippet in a koan challenge.
+ */
 export class KoanDocumentProvider implements vscode.TextDocumentContentProvider {
 
     public static readonly VIEW_TYPE: string = 'koan-cell';
@@ -39,6 +30,7 @@ export class KoanDocumentProvider implements vscode.TextDocumentContentProvider 
     }
 
 
+    // UNUSED
     private updateCell(member_id: string, content: string) {
         KoanLog.info([this, this.updateCell], member_id);
         this.cells.set(member_id, content);

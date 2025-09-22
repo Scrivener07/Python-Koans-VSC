@@ -1,6 +1,6 @@
-import { HtmlUtility } from "./utility";
-import { DocumentInfo, TestResult, WebviewMessage } from "./messaging";
-import { createChallengeHtml } from './challenge';
+import { DocumentInfo, TestResult } from "./messaging";
+import { createChallengeElement } from './challenge';
+
 
 // VS Code API
 //--------------------------------------------------
@@ -15,18 +15,36 @@ declare function acquireVsCodeApi(): {
 const vscode = acquireVsCodeApi();
 
 
-// Browser Window
+// View
 //--------------------------------------------------
+console.log('WebView:constructor');
 
 // Message handling from extension.
 window.addEventListener('message', onMessage);
-function onMessage(this: Window, event: MessageEvent<any>) {
+
+// Load templates when the page loads.
+document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
+
+
+
+// Browser Document
+//--------------------------------------------------
+
+ async function onDOMContentLoaded(event: Event) {
+    console.log('DOMContentLoaded...');
+}
+
+
+// Browser Window
+//--------------------------------------------------
+
+function onMessage(event: MessageEvent<any>) {
+    console.log('Message received from extension:', event.data);
     const message = event.data;
     switch (message.command) {
         case 'initialize':
             onMessage_Initialize(message.documentInfo, message.challenges);
             break;
-
         case 'updateChallengeOutput':
             onMessage_OutputUpdate(message.member_id!, message.result!);
             break;
@@ -36,40 +54,70 @@ function onMessage(this: Window, event: MessageEvent<any>) {
 }
 
 
+// Document Details
+//--------------------------------------------------
+
+function document_preview_raw() {
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+        textarea.addEventListener('input', () => {
+            // The text of the actual `*.koan` file json data.
+            vscode.postMessage({
+                command: 'update',
+                text: textarea.value
+            });
+        });
+    }
+}
+
+
+function updateCellPreview(member_id: string, content: string): void {
+    const preview = document.getElementById(`${member_id}_preview`);
+    if (preview) {
+        preview.innerHTML = `<pre><code>${content}</code></pre>`;
+    }
+}
+
+
+
 // New function to populate the UI with data.
 function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
     // Populate the document details.
     const detailsContainer = document.getElementById('document-details');
     if (detailsContainer) {
         detailsContainer.innerHTML = `
-            <details>
-                <summary>Document Details</summary>
-                <ul>
-                    <li><b>File:</b> ${documentInfo.fileName}</li>
-                    <li><b>URI:</b> ${documentInfo.uri}</li>
-                    <li><b>Lines:</b> ${documentInfo.lineCount}</li>
-                    <li><b>Characters:</b> ${documentInfo.content.length}</li>
-                </ul>
-            </details>
-            <details>
-                <summary>Document Source</summary>
-                <p>This is the full text of the document being edited.</p>
-                <textarea class="code-cell">${HtmlUtility.wrapDivision(documentInfo.content)}</textarea>
-            </details>
-        `;
+        <details>
+            <summary>Document Details</summary>
+            <ul>
+                <li><b>File:</b> ${documentInfo.fileName}</li>
+                <li><b>URI:</b> ${documentInfo.uri}</li>
+                <li><b>Language:</b> ${documentInfo.language}</li>
+                <li><b>Lines:</b> ${documentInfo.lineCount}</li>
+                <li><b>Characters:</b> ${documentInfo.content.length}</li>
+            </ul>
+        </details>
+        <details>
+            <summary>Document Source</summary>
+            <p>This is the full text of the document being edited.</p>
+            <textarea class="output-content">${documentInfo.content}</textarea>
+        </details>
+    `;
     }
 
-    // Populate challenges
+    // Populate challenges.
     const challengesContainer = document.getElementById('challenges-container');
     if (challengesContainer) {
-        let challengesHtml = '';
+        // Clear existing content.
+        challengesContainer.innerHTML = '';
+
+        // Add each challenge.
         challenges.forEach(challenge => {
-            challengesHtml += createChallengeHtml(challenge);
+            const challengeElement = createChallengeElement(challenge);
+            challengesContainer.appendChild(challengeElement);
         });
-        challengesContainer.innerHTML = challengesHtml;
     }
 
-    // Set up event listener for the textarea
+    // Set up event listener for the textarea.
     const textarea = document.querySelector('textarea');
     if (textarea) {
         textarea.addEventListener('input', () => {
@@ -86,14 +134,14 @@ function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
 //--------------------------------------------------
 
 // Challenge Functions
-function runChallenge(member_id: string): void {
+function Code_RunTest(member_id: string): void {
     vscode.postMessage({
         command: 'runTests',
         member_id: member_id
     });
 }
 
-function openCodeCell(member_id: string): void {
+function Code_OpenVirtual(member_id: string): void {
     vscode.postMessage({
         command: 'openCodeCell',
         member_id: member_id
@@ -107,21 +155,21 @@ function onClick_InstructionToggle(challenge_id: string): void {
     }
 }
 
-function resetChallenge(member_id: string): void {
+function Code_Reset(member_id: string): void {
     vscode.postMessage({
         command: 'resetChallenge',
         member_id: member_id
     });
 }
 
-function formatCode(member_id: string): void {
+function Code_Format(member_id: string): void {
     vscode.postMessage({
         command: 'formatCode',
         member_id: member_id
     });
 }
 
-function clearOutput(member_id: string): void {
+function Output_Clear(member_id: string): void {
     const outputElement = document.getElementById(`${member_id}_output`);
     if (outputElement) {
         outputElement.innerHTML = '<div class="output-placeholder">Run tests to see results here...</div>';
@@ -159,35 +207,13 @@ function onMessage_OutputUpdate(member_id: string, result: TestResult): void {
 }
 
 
-// Document Details
-//--------------------------------------------------
-
-const textarea = document.querySelector('textarea');
-if (textarea) {
-    textarea.addEventListener('input', () => {
-        // The text of the actual `*.koan` file json data.
-        vscode.postMessage({
-            command: 'update',
-            text: textarea.value
-        });
-    });
-}
-
-function updateCellPreview(member_id: string, content: string): void {
-    const preview = document.getElementById(`${member_id}_preview`);
-    if (preview) {
-        preview.innerHTML = `<pre><code>${HtmlUtility.wrapDivision(content)}</code></pre>`;
-    }
-}
-
-
 // Globals
 //--------------------------------------------------
 // Expose functions to global scope.
 // This is crucial for the onclick attributes in HTML.
-(window as any).runChallenge = runChallenge;
-(window as any).openCodeCell = openCodeCell;
+(window as any).runChallenge = Code_RunTest;
+(window as any).openCodeCell = Code_OpenVirtual;
 (window as any).toggleChallenge = onClick_InstructionToggle;
-(window as any).resetChallenge = resetChallenge;
-(window as any).formatCode = formatCode;
-(window as any).clearOutput = clearOutput;
+(window as any).resetChallenge = Code_Reset;
+(window as any).formatCode = Code_Format;
+(window as any).clearOutput = Output_Clear;

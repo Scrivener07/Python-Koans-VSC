@@ -1,36 +1,56 @@
-// Create HTML for a challenge.
-export function createChallengeHtml(challenge: any): string {
+export interface Challenge {
+    name: string;
+    instruction: string;
+    code: string;
+}
+
+
+/**
+ * Create a challenge element from a template and data.
+ */
+export function createChallengeElement(challenge: Challenge): HTMLElement {
+    const div = document.createElement('div');
+    div.innerHTML = createFallbackChallengeHtml(challenge);
+    return div.firstElementChild as HTMLElement;
+}
+
+
+
+/**
+ * Fallback method for string-based HTML when templates aren't loaded.
+ */
+export function createFallbackChallengeHtml(challenge: Challenge): string {
     return `
-    <div class="challenge-container" data-challenge-id="${challenge.name}">
+    <details class="challenge-container" data-challenge-id="${challenge.name}">
+        <summary>
+            <!-- Challenge Header -->
+            <div class="challenge-header">
+                <div class="challenge-title">
+                    <h2>${challenge.name}</h2>
+                    <span class="challenge-status" data-status="pending">○</span>
+                </div>
 
-        <!-- Challenge Header -->
-        <div class="challenge-header">
-            <div class="challenge-title">
-                <h2>${challenge.name}</h2>
-                <span class="challenge-status" data-status="pending">○</span>
+                <div class="challenge-controls">
+                    <button class="btn-secondary" onclick="toggleChallenge('${challenge.name}')">
+                        <span class="icon">📖</span> View Instructions
+                    </button>
+                    <button class="btn-secondary" onclick="openCodeCell('${challenge.name}')">
+                        <span class="icon">📝</span> Open Code Cell
+                    </button>
+                    <button class="btn-primary" onclick="runChallenge('${challenge.name}')">
+                        <span class="icon">▶</span> Run Tests
+                    </button>
+                </div>
             </div>
+        </summary>
 
-            <div class="challenge-controls">
-                <button class="btn-secondary" onclick="toggleChallenge('${challenge.name}')">
-                    <span class="icon">📖</span> View Instructions
-                </button>
-                <button class="btn-primary" onclick="runChallenge('${challenge.name}')">
-                    <span class="icon">▶</span> Run Tests
-                </button>
-                <button class="btn-secondary" onclick="openCodeCell('${challenge.name}')">
-                    <span class="icon">📝</span> Open Code Cell
-                </button>
-            </div>
-        </div>
-
-        <!-- Instructions Panel (Collapsible) -->
+        <!-- Rest of your existing HTML -->
         <div class="challenge-instructions" id="${challenge.name}_instructions">
             <div class="instructions-content">
                 ${challenge.instruction}
             </div>
         </div>
 
-        <!-- Code Editor Section -->
         <div class="challenge-code-section">
             <div class="code-header">
                 <span class="code-label">Your Solution</span>
@@ -53,7 +73,6 @@ export function createChallengeHtml(challenge: any): string {
             </div>
         </div>
 
-        <!-- Output Section -->
         <div class="challenge-output-section">
             <div class="output-header">
                 <span class="output-label">Test Results</span>
@@ -69,5 +88,5 @@ export function createChallengeHtml(challenge: any): string {
                 </div>
             </div>
         </div>
-    </div>`;
+    </details>`;
 }

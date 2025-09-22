@@ -7,6 +7,7 @@ export interface DocumentInfo {
     uri: string;
     lineCount: number;
     content: string;
+    language: string;
 }
 
 export interface TestResult {

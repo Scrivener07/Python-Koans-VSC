@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { KoanData, Challenge } from './data';
 
+// UNUSED
 class View {
 
     public static getFallbackHtml(css_common: vscode.Uri, css_editor: vscode.Uri, script_Uri: vscode.Uri, document: vscode.TextDocument): string {

@@ -4,9 +4,9 @@
 export enum EditorCommands {
     Data_Initialize = 'initialize',
     Document_UpdateText = 'update',
+    Code_OpenVirtual = 'openCodeCell',
     Code_RunTests = 'runTests',
     Code_Reset = 'resetChallenge',
-    Code_OpenVirtual = 'openCodeCell',
     Code_Format = 'formatCode',
     Output_Update = 'updateChallengeOutput',
     Output_Clear = 'clearOutput'

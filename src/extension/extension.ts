@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import { KoanLog } from './log';
 import { KoanCommands } from './commands';
-import { KoanEditor } from './koan/provider';
-import { KoanDocument } from './koan/documents';
+import { KoanEditorProvider } from './koan/provider';
+import { KoanDocumentProvider } from './koan/documents';
 import { KoanPanel } from './koan-overview/provider';
 import { KoanNotebook } from './notebook/notebook';
 import { KoanNotebookSerializer } from './notebook/serializer';
@@ -13,8 +13,8 @@ export function activate(context: vscode.ExtensionContext) {
     KoanLog.create();
     KoanLog.info([activate], context.extensionUri);
     KoanCommands.activate(context);
-    KoanEditor.activate(context);
-    KoanDocument.activate(context);
+    context.subscriptions.push(KoanEditorProvider.register(context));
+    context.subscriptions.push(KoanDocumentProvider.register(context));
     KoanPanel.activate(context);
     KoanNotebook.activate(context);
     KoanNotebookSerializer.activate(context);

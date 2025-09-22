@@ -1,8 +1,3 @@
 {
-    "file": "exercise.py",
-    "challenges": [
-        "challenge_01",
-        "challenge_02",
-        "challenge_03"
-    ]
+    "file": "exercise.py"
 }
