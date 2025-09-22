@@ -26,11 +26,33 @@ window.addEventListener('message', onMessage);
 document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
 
 
+// Debounce Input
+//--------------------------------------------------
+
+let updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function handleCodeEditorChange(challengeId: string, newCode: string) {
+    // Clear previous timeout.
+    if (updateTimeout) {
+        clearTimeout(updateTimeout);
+    }
+
+    // Set new timeout (ms delay).
+    const delay: number = 1000;
+    updateTimeout = setTimeout(() => {
+        vscode.postMessage({
+            command: EditorCommands.Code_Update,
+            member_id: challengeId,
+            code: newCode
+        });
+    }, delay);
+}
+
 
 // Browser Document
 //--------------------------------------------------
 
- async function onDOMContentLoaded(event: Event) {
+async function onDOMContentLoaded(event: Event) {
     console.log('DOMContentLoaded...');
 }
 
@@ -127,6 +149,27 @@ function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
             });
         });
     }
+
+    applyInputHandlers();
+}
+
+
+function applyInputHandlers() {
+    document.querySelectorAll('.code-input').forEach((editor) => {
+        editor.addEventListener('input', (event) => {
+            const target = event.target as HTMLTextAreaElement;
+            const challengeDiv = target.closest('[data-challenge-id]');
+            if (!challengeDiv) {
+                return;
+            }
+
+            const challengeId = challengeDiv.getAttribute('data-challenge-id');
+            if (challengeId) {
+                // Use the debounced handler instead of direct message sending
+                handleCodeEditorChange(challengeId, target.value);
+            }
+        });
+    });
 }
 
 

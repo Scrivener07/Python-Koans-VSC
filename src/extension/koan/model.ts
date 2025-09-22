@@ -295,8 +295,53 @@ export class EditorModel implements vscode.Disposable {
                 vscode.window.showErrorMessage('Clear output functionality is not yet implemented.');
                 break;
 
+            case 'updateCodeBody':
+                this.updatePythonFunction(message.member_id, message.code);
+                break;
+
             default:
                 KoanLog.warn([EditorModel, this.onMessage], 'Unhandled command:', message.command);
+        }
+    }
+
+
+
+    private async updatePythonFunction(member_id: string, code: string): Promise<void> {
+        try {
+            // Get Python document
+            const koanData = this.get_json_data();
+            const pythonDocument = await this.get_python_document(koanData);
+            const pythonFileUri = pythonDocument.uri;
+
+            // Create the Python script path
+            const scriptPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', 'updater.py');
+
+            // Run the Python updater script
+            const updatedContent = await Python.start_arguments(scriptPath, [
+                pythonFileUri.fsPath,
+                member_id,
+                code
+            ]);
+
+            // Create edit with the entire updated content
+            const edit = new vscode.WorkspaceEdit();
+            const entireDocument = new vscode.Range(
+                new vscode.Position(0, 0),
+                pythonDocument.lineAt(pythonDocument.lineCount - 1).range.end
+            );
+            edit.replace(pythonFileUri, entireDocument, updatedContent);
+
+            // Apply the edit
+            await vscode.workspace.applyEdit(edit);
+            vscode.window.setStatusBarMessage(`Updated function ${member_id}`, 3000);
+        } catch (error: unknown) {
+            let errorMessage: string;
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else {
+                errorMessage = String(error);
+            }
+            vscode.window.showErrorMessage(`Failed to update function: ${errorMessage}`);
         }
     }
 
@@ -359,7 +404,7 @@ export class EditorModel implements vscode.Disposable {
 
 
     // TODO: This is a SIMULATED execution.
-    private async executeTests(member_id: string): Promise<{ success: boolean, message: string }> {
+    private async executeTests_Dummy(member_id: string): Promise<{ success: boolean, message: string }> {
         // Simulate test execution with a delay.
         await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -367,6 +412,35 @@ export class EditorModel implements vscode.Disposable {
         return Math.random() > 0.5
             ? { success: true, message: `All tests passed for ${member_id}!` }
             : { success: false, message: `Test failed for ${member_id}: Expected True but got False` };
+    }
+
+
+
+    private async executeTests(member_id: string): Promise<{ success: boolean, message: string }> {
+        // Get paths to relevant Python files
+        const koanData = this.get_json_data();
+        const pythonDocument = await this.get_python_document(koanData);
+        const pythonFilePath = pythonDocument.uri.fsPath;
+
+        // Create the test execution script path
+        const testScriptPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', 'runner.py');
+
+        try {
+            // Run the test for the specific challenge
+            const output = await Python.start_arguments(testScriptPath, [pythonFilePath, member_id]);
+
+            // Parse the test result
+            const result = JSON.parse(output);
+            return {
+                success: result.success,
+                message: result.message
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: `Test execution failed: ${error.message}`
+            };
+        }
     }
 
 

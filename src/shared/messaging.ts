@@ -8,6 +8,7 @@ export enum EditorCommands {
     Code_RunTests = 'runTests',
     Code_Reset = 'resetChallenge',
     Code_Format = 'formatCode',
+    Code_Update = 'updateCodeBody',
     Output_Update = 'updateChallengeOutput',
     Output_Clear = 'clearOutput'
 }
@@ -34,10 +35,9 @@ export interface WebviewMessage {
 }
 
 
-// Message Types
-//--------------------------------------------------
-// Define message types.
-
+/**
+ * Message structure for communication between the extension and the webview editor.
+ */
 export interface DocumentInfo {
     fileName: string;
     uri: string;
