@@ -1,15 +1,19 @@
 import * as vscode from 'vscode';
 import { KoanLog } from '../log';
-import { Challenge } from './data';
-import { EditorCommands } from '../../shared';
+import { Manifest, Challenge } from './data';
+import { DocumentInfo, EditorCommands, TestResult } from '../../shared';
 import { KoanDocumentProvider } from './documents';
-import { Python } from './runner';
+import { Python } from '../python';
+import { Runner } from '../python/runner';
+import { Launcher } from '../python/launcher';
+import { Code } from '../python/code';
+import { Updater } from '../python/updater';
 
-// https://code.visualstudio.com/api/extension-guides/webview
+// TODO: Ensure are created disposables are registered for disposal.
 
 export class EditorModel implements vscode.Disposable {
 
-    /** The text document being edited. */
+    /** The text document being edited. This is the `*.koan` manifest file. */
     private readonly document: vscode.TextDocument;
 
     /** The webview panel to use. */
@@ -26,6 +30,9 @@ export class EditorModel implements vscode.Disposable {
 
     /** Supports the `vscode.Disposable` interface implementation. */
     private disposables: vscode.Disposable[] = [];
+
+    /** The manifest document data. */
+    private manifest: Manifest = new Manifest();
 
 
     constructor(
@@ -60,11 +67,6 @@ export class EditorModel implements vscode.Disposable {
     // Initialization
     //--------------------------------------------------
 
-    // Track the Python document
-    // private pythonFileUri: vscode.Uri | undefined;
-    // private pythonDocument: vscode.TextDocument | undefined;
-
-
     public async initialize(): Promise<void> {
         this.panel.webview.options = {
             enableScripts: true,
@@ -74,55 +76,43 @@ export class EditorModel implements vscode.Disposable {
             ]
         };
 
-        //----------
-
         // Parse the koan JSON manifest.
-        let koanData: any;
         try {
-            koanData = this.get_json_data();
+            this.read();
         } catch (error) {
-            console.error('Failed to parse koan JSON manifest:', error);
+            console.error('Failed to read koan manifest:', error);
             return;
         }
 
-        //----------
 
-        let pythonDocument: vscode.TextDocument;
+        // Get the backing Python file specified in the manifest.
+        let exerciseDocument: vscode.TextDocument;
         try {
-            pythonDocument = await this.get_python_document(koanData);
+            exerciseDocument = await this.get_exercise_document(this.manifest);
         } catch (error) {
             console.error('Failed to get Python document:', error);
             return;
         }
-        const pythonDocumentInfo = {
-            fileName: pythonDocument.fileName,
-            uri: pythonDocument.uri.path,
-            language: pythonDocument.languageId,
-            lineCount: pythonDocument.lineCount,
-            encoding: pythonDocument.encoding,
-            content: pythonDocument.getText()
+        const exerciseDocumentInfo: DocumentInfo = {
+            fileName: exerciseDocument.fileName,
+            uri: exerciseDocument.uri.path,
+            language: exerciseDocument.languageId,
+            lineCount: exerciseDocument.lineCount,
+            encoding: exerciseDocument.encoding,
+            content: exerciseDocument.getText()
         };
 
-        //----------
-
+        // Get the challenge data parsed from Python source code.
         let parsedPythonData: Challenge[];
         try {
-            parsedPythonData = await this.pythonParseFile(pythonDocument.uri);
+            parsedPythonData = await this.python_ParseFile(exerciseDocument.uri);
         } catch (error) {
             console.error('Failed to parse Python file:', error);
             return;
         }
-        //----------
 
         // Set the webview's initial HTML content.
         await this.render();
-
-        //----------
-
-        // After setting HTML, send initial data.
-        // const data = new KoanData();
-
-        //----------
 
         // Build the message data.
         const challenges: Challenge[] = Array.from(parsedPythonData.values());
@@ -132,7 +122,7 @@ export class EditorModel implements vscode.Disposable {
             code: challenge.code
         }));
 
-        const documentInfo = {
+        const documentInfo: DocumentInfo = {
             fileName: this.document.fileName,
             uri: this.document.uri.path,
             language: this.document.languageId,
@@ -144,7 +134,7 @@ export class EditorModel implements vscode.Disposable {
         const message = {
             command: EditorCommands.Data_Initialize,
             documentInfo: documentInfo,
-            pythonDocumentInfo: pythonDocumentInfo,
+            pythonDocumentInfo: exerciseDocumentInfo,
             challenges: challenges_map
         };
 
@@ -152,35 +142,69 @@ export class EditorModel implements vscode.Disposable {
     }
 
 
-    private get_json_data(): any {
-        // Parse the koan JSON manifest.
-        const content = this.document.getText();
-        const data = JSON.parse(content);
-        if (!data.python) {
-            throw new Error("No Python file specified in koan manifest");
-        }
-        return data;
-    }
-
-
-    private async get_python_document(koanData: any): Promise<vscode.TextDocument> {
-        // Resolve the Python file path relative to the koan file.
-        const koanUri = this.document.uri;
-        const koanDirUri = vscode.Uri.joinPath(koanUri, '..');
-        const pythonFileUri = vscode.Uri.joinPath(koanDirUri, koanData.python);
-
-        // Load t1he Python document
-        return await vscode.workspace.openTextDocument(pythonFileUri);
-    }
-
-
-
     // Document
     //--------------------------------------------------
 
+    /**
+     * Handle koan manifest document changes by updating the web view.
+     * @param e An event describing a transactional document change.
+     *
+     * Note: This is invoked by the *provider* for this custom-editor.
+     */
     public onTextDocumentChanged(e: vscode.TextDocumentChangeEvent): void {
-        // Handle document changes by updating the web view.
+        this.read();
         this.render();
+    }
+
+
+    /** Parse the koan JSON manifest document. */
+    private read(): void {
+        const text: string = this.document.getText();
+        try {
+            this.manifest = Manifest.decode(text);
+        }
+        catch (error: unknown) {
+            let errorMessage: string;
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else {
+                errorMessage = String(error);
+            }
+            throw new Error(`Failed to decode manifest document: ${this.document.uri}\n  - ${errorMessage}`);
+        }
+    }
+
+
+    // Data
+    //--------------------------------------------------
+
+    private async get_exercise_document(manifest: Manifest): Promise<vscode.TextDocument> {
+        // Resolve the Python exercise file path, relative to the koan file.
+        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
+        const exercise_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.exercise);
+
+        // Load the Python file as a VS Code document object.
+        return await vscode.workspace.openTextDocument(exercise_uri);
+    }
+
+
+    private async get_test_document(manifest: Manifest): Promise<vscode.TextDocument> {
+        // Resolve the Python exercise file path, relative to the koan file.
+        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
+        const test_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.test);
+
+        // Load the Python file as a VS Code document object.
+        return await vscode.workspace.openTextDocument(test_uri);
+    }
+
+
+    private async get_solution_document(manifest: Manifest): Promise<vscode.TextDocument> {
+        // Resolve the Python exercise file path, relative to the koan file.
+        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
+        const solution_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.solution);
+
+        // Load the Python file as a VS Code document object.
+        return await vscode.workspace.openTextDocument(solution_uri);
     }
 
 
@@ -273,8 +297,20 @@ export class EditorModel implements vscode.Disposable {
                 this.handle_UpdateTextDocument(this.document, message.text);
                 break;
 
+            case EditorCommands.Code_Update:
+                this.handle_CodeUpdate(message.member_id, message.code);
+                break;
+
+            case EditorCommands.Code_RunTests:
+                this.handle_RunTests(message.member_id);
+                break;
+
             case EditorCommands.Code_OpenVirtual:
                 this.handle_CodeOpenVirtual(message.member_id);
+                break;
+
+            case EditorCommands.Output_Clear:
+                vscode.window.showErrorMessage('Clear output functionality is not yet implemented.');
                 break;
 
             case EditorCommands.Code_Reset:
@@ -287,45 +323,55 @@ export class EditorModel implements vscode.Disposable {
                 // TODO: Format the provided snippet and pass it back to the webview.
                 break;
 
-            case EditorCommands.Code_RunTests:
-                this.handle_RunTests(this.panel, this.document, message.member_id);
-                break;
-
-            case EditorCommands.Output_Clear:
-                vscode.window.showErrorMessage('Clear output functionality is not yet implemented.');
-                break;
-
-            case 'updateCodeBody':
-                this.updatePythonFunction(message.member_id, message.code);
-                break;
-
             default:
                 KoanLog.warn([EditorModel, this.onMessage], 'Unhandled command:', message.command);
         }
     }
 
 
+    // Document Editing
+    //--------------------------------------------------
 
-    private async updatePythonFunction(member_id: string, code: string): Promise<void> {
+    private handle_UpdateTextDocument(document: vscode.TextDocument, value: string) {
+        KoanLog.info([EditorModel, this.handle_UpdateTextDocument], 'Document:', document.uri.toString());
+        const edit = new vscode.WorkspaceEdit();
+        const fullRange = new vscode.Range(
+            document.positionAt(0),
+            document.positionAt(document.getText().length)
+        );
+        edit.replace(document.uri, fullRange, value);
+        return vscode.workspace.applyEdit(edit);
+    }
+
+
+    /**
+     * Opens a virtual document for this code member.
+     * @param member_id The member identifier to use.
+     */
+    private async handle_CodeOpenVirtual(member_id: string): Promise<void> {
+        KoanLog.info([EditorModel, this.handle_CodeOpenVirtual], `ID: '${member_id}'`);
+        const uri: vscode.Uri = vscode.Uri.parse(`${KoanDocumentProvider.VIEW_TYPE}:${member_id}.py`);
+        const document: vscode.TextDocument = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(document, vscode.ViewColumn.Beside);
+    }
+
+
+    private async handle_CodeUpdate(member_id: string, code: string): Promise<void> {
+        KoanLog.info([EditorModel, this.handle_CodeUpdate], `ID: '${member_id}'`, `Code:\n'${code}'`);
         try {
-            // Get Python document
-            const koanData = this.get_json_data();
-            const pythonDocument = await this.get_python_document(koanData);
-            const pythonFileUri = pythonDocument.uri;
+            // Get the backing Python document.
+            const pythonDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
+            const pythonFileUri: vscode.Uri = pythonDocument.uri;
 
-            // Create the Python script path
-            const scriptPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', 'updater.py');
+            // Create the Python script path.
+            const scriptPath: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Updater.PYTHON_FILE);
 
-            // Run the Python updater script
-            const updatedContent = await Python.start_arguments(scriptPath, [
-                pythonFileUri.fsPath,
-                member_id,
-                code
-            ]);
+            // Run the Python updater script.
+            const updatedContent: string = await Updater.run(scriptPath, pythonFileUri, member_id, code);
 
-            // Create edit with the entire updated content
-            const edit = new vscode.WorkspaceEdit();
-            const entireDocument = new vscode.Range(
+            // Create edit with the entire updated content.
+            const edit: vscode.WorkspaceEdit = new vscode.WorkspaceEdit();
+            const entireDocument: vscode.Range = new vscode.Range(
                 new vscode.Position(0, 0),
                 pythonDocument.lineAt(pythonDocument.lineCount - 1).range.end
             );
@@ -346,52 +392,35 @@ export class EditorModel implements vscode.Disposable {
     }
 
 
-    // Document Editing
-    //--------------------------------------------------
-
-    private handle_UpdateTextDocument(document: vscode.TextDocument, value: string) {
-        KoanLog.info([EditorModel, this.handle_UpdateTextDocument], 'Document:', document.uri.toString());
-        const edit = new vscode.WorkspaceEdit();
-        const fullRange = new vscode.Range(
-            document.positionAt(0),
-            document.positionAt(document.getText().length)
-        );
-        edit.replace(document.uri, fullRange, value);
-        return vscode.workspace.applyEdit(edit);
-    }
-
-
-    private async handle_CodeOpenVirtual(member_id: string): Promise<void> {
-        KoanLog.info([EditorModel, this.handle_CodeOpenVirtual], 'ID:', member_id);
-        // Create a virtual document for this code member.
-        const uri = vscode.Uri.parse(`${KoanDocumentProvider.VIEW_TYPE}:${member_id}.py`);
-        const doc = await vscode.workspace.openTextDocument(uri);
-        await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
-    }
-
-
     // Test Execution
     //--------------------------------------------------
 
-    private async handle_RunTests(webviewPanel: vscode.WebviewPanel, document: vscode.TextDocument, member_id: string): Promise<void> {
-        KoanLog.info([EditorModel, this.handle_RunTests], 'ID:', member_id);
+    /**
+     * Handles starting the Python test framework runner for a given test identity.
+     * @param webviewPanel
+     * @param document
+     * @param member_id
+     */
+    private async handle_RunTests(member_id: string): Promise<void> {
+        KoanLog.info([EditorModel, this.handle_RunTests], `ID: '${member_id}'`);
         try {
-            // TODO: Simulate running tests for now...
-            const testResult = await this.executeTests(member_id);
+            // TODO: WIP
+            // const testResult = await this.executeTests_Original(member_id);
+            // const testResult = await this.execute_Runner(member_id);
+            const testResult: TestResult = await this.execute_TestLauncher(member_id);
 
-            // Send result back to webview
-            webviewPanel.webview.postMessage({
+            // Send result back to webview.
+            this.panel.webview.postMessage({
                 command: EditorCommands.Output_Update,
                 member_id: member_id,
                 result: testResult
             });
-
         }
         catch (error) {
             KoanLog.error([EditorModel, this.handle_RunTests], 'Test execution failed:', error);
 
-            // Send error result to webview
-            webviewPanel.webview.postMessage({
+            // Send error result to webview.
+            this.panel.webview.postMessage({
                 command: EditorCommands.Output_Update,
                 member_id: member_id,
                 result: {
@@ -403,8 +432,41 @@ export class EditorModel implements vscode.Disposable {
     }
 
 
-    // TODO: This is a SIMULATED execution.
-    private async executeTests_Dummy(member_id: string): Promise<{ success: boolean, message: string }> {
+    // TODO: WIP (Test Launcher)
+    // TODO: The result is undefined.
+    private async execute_TestLauncher(member_id: string): Promise<TestResult> {
+        KoanLog.info([EditorModel, this.execute_TestLauncher], `ID: '${member_id}'`);
+        const pythonDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
+        const pythonFileUri: vscode.Uri = pythonDocument.uri;
+        const toolFileUri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Launcher.PYTHON_FILE);
+        return await Launcher.launch(toolFileUri, pythonFileUri, member_id);
+    }
+
+
+    // TODO: WIP (Python Runner)
+    private async execute_Runner(member_id: string): Promise<{ success: boolean, message: string }> {
+        KoanLog.info([EditorModel, this.execute_Runner], `ID: '${member_id}'`);
+        const pythonDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
+        const pythonFilePath: string = pythonDocument.uri.fsPath;
+        const testScriptUri: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Runner.PYTHON_FILE);
+        return await Runner.run(testScriptUri, pythonFilePath, member_id);
+    }
+
+
+    // TODO: WIP (Original)
+    private async execute_TestOriginal(member_id: string): Promise<{ success: boolean, message: string }> {
+        KoanLog.info([EditorModel, this.execute_TestOriginal], `ID: '${member_id}'`);
+        const pythonDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
+        const pythonFileUri: vscode.Uri = pythonDocument.uri;
+        const scriptFileUri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Launcher.PYTHON_FILE);
+        return await Launcher.run_Original(scriptFileUri, pythonFileUri, member_id);
+    }
+
+
+    // NOTE: This is a SIMULATED mock execution. (Original)
+    private async execute_Tests_Dummy(member_id: string): Promise<{ success: boolean, message: string }> {
+        KoanLog.info([EditorModel, this.execute_Tests_Dummy], `ID: '${member_id}'`);
+
         // Simulate test execution with a delay.
         await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -415,65 +477,20 @@ export class EditorModel implements vscode.Disposable {
     }
 
 
-
-    private async executeTests(member_id: string): Promise<{ success: boolean, message: string }> {
-        // Get paths to relevant Python files
-        const koanData = this.get_json_data();
-        const pythonDocument = await this.get_python_document(koanData);
-        const pythonFilePath = pythonDocument.uri.fsPath;
-
-        // Create the test execution script path
-        const testScriptPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', 'runner.py');
-
-        try {
-            // Run the test for the specific challenge
-            const output = await Python.start_arguments(testScriptPath, [pythonFilePath, member_id]);
-
-            // Parse the test result
-            const result = JSON.parse(output);
-            return {
-                success: result.success,
-                message: result.message
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                message: `Test execution failed: ${error.message}`
-            };
-        }
-    }
-
-
     // Python Execution
     //--------------------------------------------------
 
-    private python_start() {
-        KoanLog.info([EditorModel, this.python_start]);
-        const scriptPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', 'program.py');
-        try {
-            Python.start(scriptPath);
-        } catch (error) {
-            console.log('Failed to start Python process:', error);
-            return;
-        }
-    }
-
-
-    private async pythonParseFile(pythonFileUri: vscode.Uri): Promise<Challenge[]> {
-        if (!pythonFileUri) {
-            console.error('No Python file URI provided for parsing.');
-            return [];
-        }
+    private async python_ParseFile(pythonFileUri: vscode.Uri): Promise<Challenge[]> {
+        KoanLog.info([EditorModel, this.python_ParseFile], pythonFileUri.toString());
 
         // Execute the Python script to parse the file.
-        const scriptPath = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', 'parse_ast.py');
+        const scriptPath: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Code.PYTHON_FILE);
         let result: string = '';
         try {
             result = await Python.start_arguments(scriptPath, [pythonFileUri.fsPath]);
-            console.log('Python parse result:\n', result);
         }
         catch (error) {
-            KoanLog.error([EditorModel, this.pythonParseFile], 'Failed to parse Python file:', error);
+            KoanLog.error([EditorModel, this.python_ParseFile], 'Failed to parse Python file:', error);
             return [];
         }
 
@@ -481,7 +498,7 @@ export class EditorModel implements vscode.Disposable {
         try {
             parsedData = JSON.parse(result);
         } catch (error) {
-            KoanLog.error([EditorModel, this.pythonParseFile], 'Failed to parse JSON from Python output:', error);
+            KoanLog.error([EditorModel, this.python_ParseFile], 'Failed to parse JSON from Python output:', error);
             return [];
         }
 
@@ -496,7 +513,7 @@ export class EditorModel implements vscode.Disposable {
             );
             return challenges;
         } catch (error) {
-            KoanLog.error([EditorModel, this.pythonParseFile], 'Failed to create Challenge instances:', error);
+            KoanLog.error([EditorModel, this.python_ParseFile], 'Failed to create Challenge instances:', error);
             return [];
         }
     }

@@ -1,3 +1,5 @@
 {
-    "file": "exercise.py"
+    "exercise": "exercise.py",
+    "test": "exercise_test.py",
+    "solution": "solution.py"
 }

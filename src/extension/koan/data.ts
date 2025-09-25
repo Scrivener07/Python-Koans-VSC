@@ -1,57 +1,49 @@
-export class KoanData {
+export class Manifest {
+    /** The Python exercise file path. */
+    public exercise: string;
 
-    private static readonly DEFAULT_INSTRUCTION: string = `
-    Return a message based on the provided \`score\`.
+    /** The Python unit test file path. */
+    public test: string;
 
-    Messages:
-    - \`Excellent\` if score >= 90
-    - \`Good\` if score >= 75
-    - \`Pass\` if score >= 60
-    - \`Fail\` otherwise
-
-    Returns:
-        \`str\`: The message corresponding to the score.
-
-    Hint:
-        Uses the \`if\`, \`elif\`, and \`else\` conditional statements.
-    `;
-
-    private static readonly DEFAULT_CODE: string = `
-    # Your code here
-    print("Hello World!")
-    if score >= 90:
-        return "Excellent"
-    elif score >= 75:
-        return "Good"
-    elif score >= 60:
-        return "Pass"
-    else:
-        return "Fail"
-    `;
+    /** The Python solution file path. */
+    public solution: string;
 
 
-    public readonly challenges: Map<string, Challenge>;
-
-
-    constructor() {
-        this.challenges = new Map<string, Challenge>();
-
-        // Initialize with some example challenges.
-        const challenges = this.data_default();
-        for (const challenge of challenges) {
-            this.challenges.set(challenge.name, challenge);
-        }
+    constructor(exercise: string = '', test: string = '', solution: string = '') {
+        this.exercise = exercise;
+        this.test = test;
+        this.solution = solution;
     }
 
 
-    private data_default(): Challenge[] {
-        return [
-            new Challenge('challenge_01', KoanData.DEFAULT_INSTRUCTION, KoanData.DEFAULT_CODE),
-            new Challenge('challenge_02', KoanData.DEFAULT_INSTRUCTION, KoanData.DEFAULT_CODE),
-            new Challenge('challenge_03', KoanData.DEFAULT_INSTRUCTION, KoanData.DEFAULT_CODE),
-            new Challenge('challenge_04', KoanData.DEFAULT_INSTRUCTION, KoanData.DEFAULT_CODE),
-            new Challenge('challenge_05', KoanData.DEFAULT_INSTRUCTION, KoanData.DEFAULT_CODE)
-        ];
+    public encode(): any {
+        return {
+            exercise: this.exercise,
+            test: this.test,
+            solution: this.solution
+        };
+    }
+
+
+    public static decode(text: string): Manifest {
+        const data: any = JSON.parse(text);
+        if (!data) {
+            throw new Error('Could not parse the koan manifest.');
+        }
+        else if (!data.exercise) {
+            throw new Error('Missing required "exercise" specified in koan manifest');
+        }
+        else if (!data.test) {
+            throw new Error('Missing required "test" specified in koan manifest');
+        }
+        else if (!data.solution) {
+            throw new Error('Missing required "solution" specified in koan manifest');
+        }
+        const manifest: Manifest = new Manifest();
+        manifest.exercise = data.exercise;
+        manifest.test = data.test;
+        manifest.solution = data.solution;
+        return manifest;
     }
 
 

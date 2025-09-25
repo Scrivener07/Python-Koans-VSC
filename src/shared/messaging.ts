@@ -4,13 +4,13 @@
 export enum EditorCommands {
     Data_Initialize = 'initialize',
     Document_UpdateText = 'update',
-    Code_OpenVirtual = 'openCodeCell',
-    Code_RunTests = 'runTests',
-    Code_Reset = 'resetChallenge',
-    Code_Format = 'formatCode',
-    Code_Update = 'updateCodeBody',
-    Output_Update = 'updateChallengeOutput',
-    Output_Clear = 'clearOutput'
+    Code_OpenVirtual = 'code-open-virtual',
+    Code_RunTests = 'code-run',
+    Code_Reset = 'code-reset',
+    Code_Format = 'code-format',
+    Code_Update = 'code-update',
+    Output_Update = 'output-update',
+    Output_Clear = 'output-clear'
 }
 
 
@@ -41,7 +41,8 @@ export interface WebviewMessage {
 export interface DocumentInfo {
     fileName: string;
     uri: string;
-    lineCount: number;
-    content: string;
     language: string;
+    lineCount: number;
+    encoding: string;
+    content: string;
 }

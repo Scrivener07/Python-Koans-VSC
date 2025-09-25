@@ -78,7 +78,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         message_fail = {
             "success": False,
-            "message": "Usage: python run_test.py <python_file> <challenge_id>"
+            "message": "Usage: python runner.py <python_file> <challenge_id>"
         }
         print(json.dumps(message_fail))
         sys.exit(1)

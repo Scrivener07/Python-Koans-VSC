@@ -17,6 +17,7 @@ const vscode = acquireVsCodeApi();
 
 // View
 //--------------------------------------------------
+
 console.log('WebView:constructor');
 
 // Message handling from extension.
@@ -24,29 +25,6 @@ window.addEventListener('message', onMessage);
 
 // Load templates when the page loads.
 document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
-
-
-// Debounce Input
-//--------------------------------------------------
-
-let updateTimeout: ReturnType<typeof setTimeout> | null = null;
-
-function handleCodeEditorChange(challengeId: string, newCode: string) {
-    // Clear previous timeout.
-    if (updateTimeout) {
-        clearTimeout(updateTimeout);
-    }
-
-    // Set new timeout (ms delay).
-    const delay: number = 1000;
-    updateTimeout = setTimeout(() => {
-        vscode.postMessage({
-            command: EditorCommands.Code_Update,
-            member_id: challengeId,
-            code: newCode
-        });
-    }, delay);
-}
 
 
 // Browser Document
@@ -68,7 +46,7 @@ function onMessage(event: MessageEvent<any>) {
             onMessage_Initialize(message.documentInfo, message.challenges);
             break;
         case EditorCommands.Output_Update:
-            onMessage_OutputUpdate(message.member_id!, message.result!);
+            onMessage_OutputUpdate(message.member_id, message.result);
             break;
         default:
             console.log('Unknown message from extension:', message);
@@ -154,6 +132,10 @@ function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
 }
 
 
+// Input
+//--------------------------------------------------
+
+/** Apply input handlers to every code text area. */
 function applyInputHandlers() {
     document.querySelectorAll('.code-input').forEach((editor) => {
         editor.addEventListener('input', (event) => {
@@ -162,15 +144,39 @@ function applyInputHandlers() {
             if (!challengeDiv) {
                 return;
             }
-
             const challengeId = challengeDiv.getAttribute('data-challenge-id');
             if (challengeId) {
-                // Use the debounced handler instead of direct message sending
+                // Use the debounced handler instead of direct message sending.
                 handleCodeEditorChange(challengeId, target.value);
             }
         });
     });
 }
+
+
+// Debounce Input
+//--------------------------------------------------
+
+/** The input debounce timer to use. */
+let updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+/** The input debouce handler to use. */
+function handleCodeEditorChange(challengeId: string, newCode: string) {
+    // Clear previous timeout.
+    if (updateTimeout) {
+        clearTimeout(updateTimeout);
+    }
+    // Set new timeout (ms delay).
+    const delay: number = 1000;
+    updateTimeout = setTimeout(() => {
+        vscode.postMessage({
+            command: EditorCommands.Code_Update,
+            member_id: challengeId,
+            code: newCode
+        });
+    }, delay);
+}
+
 
 
 // Button Handlers
@@ -234,14 +240,18 @@ function onMessage_OutputUpdate(member_id: string, result: TestResult): void {
 
     if (!outputDiv) { return; }
 
-    if (result.success) {
-        outputDiv.innerHTML = `<div class="test-result pass">✅ All tests passed!</div>`;
+    // TODO: At some point earlier the message should be parsed.
+    const real_testResult: TestResult = JSON.parse(result.message);
+    console.log(real_testResult);
+
+    if (real_testResult.success) {
+        outputDiv.innerHTML = `<div class="test-result pass">✅ ${real_testResult.message}</div>`;
         if (statusIndicator) {
             statusIndicator.textContent = '✅';
             statusIndicator.setAttribute('data-status', 'pass');
         }
     } else {
-        outputDiv.innerHTML = `<div class="test-result fail">❌ ${result.message}</div>`;
+        outputDiv.innerHTML = `<div class="test-result fail">❌ ${real_testResult.message}</div>`;
         if (statusIndicator) {
             statusIndicator.textContent = '❌';
             statusIndicator.setAttribute('data-status', 'fail');

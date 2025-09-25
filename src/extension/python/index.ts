@@ -1,21 +1,38 @@
 import * as vscode from 'vscode';
 import { spawn } from 'child_process';
 
+
+export enum ProcessEvents {
+    Close = 'close',
+    Disconnect = 'disconnect',
+    Error = 'error',
+    Exit = 'exit',
+    Message = 'message',
+    Spawn = 'spawn',
+}
+
+
+export enum StreamEvents {
+    Data = 'data',
+}
+
+
 export class Python {
+    public static readonly PATH: string = "PYTHONPATH";
 
 
-    public static help(): void {
+    private static help(): void {
         const python = spawn('python', ['-h']);
 
-        python.stdout.on('data', (data) => {
+        python.stdout.on(StreamEvents.Data, (data) => {
             console.log(`Python:stdout: ${data}`);
         });
 
-        python.stderr.on('data', (data) => {
+        python.stderr.on(StreamEvents.Data, (data) => {
             console.error(`Python:stderr: ${data}`);
         });
 
-        python.on('close', (code) => {
+        python.on(ProcessEvents.Close, (code) => {
             console.log(`Python: Child process exited with code ${code}`);
         });
     }
@@ -26,17 +43,17 @@ export class Python {
         const python = spawn('python', [filePath]);
         let result: string = '';
 
-        python.stdout.on('data', (data) => {
+        python.stdout.on(StreamEvents.Data, (data) => {
             console.log(`Python:stdout: ${data}`);
             result += data;
         });
 
-        python.stderr.on('data', (data) => {
+        python.stderr.on(StreamEvents.Data, (data) => {
             console.error(`Python:stderr: ${data}`);
             result += data;
         });
 
-        python.on('close', (code) => {
+        python.on(ProcessEvents.Close, (code) => {
             console.log(`Python: Child process exited with code ${code}`);
             return result;
         });
@@ -50,30 +67,29 @@ export class Python {
 
         return new Promise<string>((resolve, reject) => {
             const python = spawn('python', [filePath, ...args]);
+            console.log(`Python: ${filePath}`, ...args);
+
             let stdout: string = '';
             let stderr: string = '';
 
-            python.stdout.on('data', (data) => {
-                console.log(`Python:stdout: ${data}`);
+            python.stdout.on(StreamEvents.Data, (data) => {
                 stdout += data;
             });
 
-            python.stderr.on('data', (data) => {
-                console.error(`Python:stderr: ${data}`);
+            python.stderr.on(StreamEvents.Data, (data) => {
                 stderr += data;
             });
 
-            python.on('error', (error) => {
-                console.error(`Python process error: ${error.message}`);
-                reject(new Error(`Failed to start Python process: ${error.message}`));
+            python.on(ProcessEvents.Error, (error) => {
+                reject(new Error(`Failed to start Python process:\n${error.message}`));
             });
 
-            python.on('close', (code) => {
-                console.log(`Python: Child process exited with code ${code}`);
+            python.on(ProcessEvents.Close, (code) => {
                 if (code === 0) {
+                    console.log(`Python: Child process exited with code ${code}:\n${stdout}`);
                     resolve(stdout);
                 } else {
-                    reject(new Error(`Python process exited with code ${code}: ${stderr}`));
+                    reject(new Error(`Python process exited with code ${code}:\n${stderr}`));
                 }
             });
         });

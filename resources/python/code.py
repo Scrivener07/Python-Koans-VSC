@@ -54,7 +54,7 @@ def get_challenge_info(file_path):
 #--------------------------------------------------
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python parse_ast.py <python_file>")
+        print("Usage: python code.py <python_file.py>")
         sys.exit(1)
 
     result:str = get_challenge_info(sys.argv[1])

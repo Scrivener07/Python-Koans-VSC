@@ -34,6 +34,36 @@
 			],
 			"debugWebviews": true,
 			"preLaunchTask": "npm: watch"
+		},
+		{
+			"name": "Koan: Test-Identity",
+			"type": "debugpy",
+			"request": "launch",
+			"module": "koans.testing",
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}\\example\\files\\C01",
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}\\example\\files\\C01"
+			},
+			"args": [
+				"identity",
+				"exercise_test.Testing.test_challenge_01"
+			]
+		},
+		{
+			"name": "Koan: Test-Launcher",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "exercise_test.py",
+			"console": "integratedTerminal",
+			"cwd": "${workspaceFolder}\\example\\files\\C01",
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}\\example\\files\\C01"
+			},
+			"args": [
+				"${workspaceFolder}\\example\\files\\C01\\exercise.py",
+				"exercise_test.Testing.test_challenge_01"
+			]
 		}
 	]
 }
