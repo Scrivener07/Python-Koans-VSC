@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import { KoanLog } from '../log';
 import { Manifest, Challenge } from './data';
-import { DocumentInfo, EditorCommands, TestResult } from '../../shared';
+import { DocumentInfo, EditorCommands, TestResult, WebviewMessage } from '../../shared';
 import { KoanDocumentProvider } from './documents';
-import { Python } from '../python';
-import { Runner } from '../python/runner';
+import { Python, ProcessResult } from '../python';
 import { Launcher } from '../python/launcher';
 import { Code } from '../python/code';
 import { Updater } from '../python/updater';
+
 
 // TODO: Ensure are created disposables are registered for disposal.
 
@@ -395,91 +395,90 @@ export class EditorModel implements vscode.Disposable {
     // Test Execution
     //--------------------------------------------------
 
-    /**
-     * Handles starting the Python test framework runner for a given test identity.
-     * @param webviewPanel
-     * @param document
-     * @param member_id
-     */
+    /** Handles starting the Python test framework runner for a given test identity. */
     private async handle_RunTests(member_id: string): Promise<void> {
         KoanLog.info([EditorModel, this.handle_RunTests], `ID: '${member_id}'`);
         try {
-            // TODO: WIP
-            // const testResult = await this.executeTests_Original(member_id);
-            // const testResult = await this.execute_Runner(member_id);
-            const testResult: TestResult = await this.execute_TestLauncher(member_id);
+            const processResult: ProcessResult = await this.execute_TestLauncher(member_id);
 
-            // Send result back to webview.
-            this.panel.webview.postMessage({
+            let message: string = '\n';
+            if (processResult.output) {
+                message += 'Output:\n';
+                message += processResult.output.join('\n');
+                message += '\n';
+            }
+
+            // NOTE: Errors are actually test results for Python `unittest` framework.
+            if (processResult.errors) {
+                message += 'Results:\n';
+                message += processResult.errors.join('\n');
+                message += '\n';
+            }
+
+            const testResult: TestResult = {
+                success: true,
+                message: message
+            };
+
+            const webMessage: WebviewMessage = {
                 command: EditorCommands.Output_Update,
                 member_id: member_id,
                 result: testResult
-            });
+            };
+
+            // Send result back to webview.
+            this.panel.webview.postMessage(webMessage);
         }
         catch (error) {
+            // This is an actual error.
             KoanLog.error([EditorModel, this.handle_RunTests], 'Test execution failed:', error);
+            let message: string = '';
+            if (error instanceof Error) {
+                message += 'Error:\n';
+                message += error.message;
+                message += '\n';
+                const result: ProcessResult = error.cause as ProcessResult;
+                if (result) {
+                    message += 'Cause:\n';
+                    message += result.errors.join('\n');
+                    message += '\n';
+                }
+                else if (error.cause) {
+                    message += 'Cause:\n';
+                    message += error.cause;
+                    message += '\n';
+                }
+            }
+            else {
+                message += `Test execution failed: ${error}`;
+            }
 
-            // Send error result to webview.
-            this.panel.webview.postMessage({
+            const testResult: TestResult = {
+                success: false,
+                message: message
+            };
+            const webMessage: WebviewMessage = {
                 command: EditorCommands.Output_Update,
                 member_id: member_id,
-                result: {
-                    success: false,
-                    message: `Test execution failed: ${error}`
-                }
-            });
+                result: testResult
+            };
+            this.panel.webview.postMessage(webMessage);
         }
     }
 
 
-    // TODO: WIP (Test Launcher)
-    // TODO: The result is undefined.
-    private async execute_TestLauncher(member_id: string): Promise<TestResult> {
+    private async execute_TestLauncher(member_id: string): Promise<ProcessResult> {
         KoanLog.info([EditorModel, this.execute_TestLauncher], `ID: '${member_id}'`);
-        const pythonDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
-        const pythonFileUri: vscode.Uri = pythonDocument.uri;
-        const toolFileUri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Launcher.PYTHON_FILE);
-        return await Launcher.launch(toolFileUri, pythonFileUri, member_id);
-    }
-
-
-    // TODO: WIP (Python Runner)
-    private async execute_Runner(member_id: string): Promise<{ success: boolean, message: string }> {
-        KoanLog.info([EditorModel, this.execute_Runner], `ID: '${member_id}'`);
-        const pythonDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
-        const pythonFilePath: string = pythonDocument.uri.fsPath;
-        const testScriptUri: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Runner.PYTHON_FILE);
-        return await Runner.run(testScriptUri, pythonFilePath, member_id);
-    }
-
-
-    // TODO: WIP (Original)
-    private async execute_TestOriginal(member_id: string): Promise<{ success: boolean, message: string }> {
-        KoanLog.info([EditorModel, this.execute_TestOriginal], `ID: '${member_id}'`);
-        const pythonDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
-        const pythonFileUri: vscode.Uri = pythonDocument.uri;
-        const scriptFileUri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Launcher.PYTHON_FILE);
-        return await Launcher.run_Original(scriptFileUri, pythonFileUri, member_id);
-    }
-
-
-    // NOTE: This is a SIMULATED mock execution. (Original)
-    private async execute_Tests_Dummy(member_id: string): Promise<{ success: boolean, message: string }> {
-        KoanLog.info([EditorModel, this.execute_Tests_Dummy], `ID: '${member_id}'`);
-
-        // Simulate test execution with a delay.
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Return a random mock result.
-        return Math.random() > 0.5
-            ? { success: true, message: `All tests passed for ${member_id}!` }
-            : { success: false, message: `Test failed for ${member_id}: Expected True but got False` };
+        const exerciseDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
+        const testDocument: vscode.TextDocument = await this.get_test_document(this.manifest);
+        return Launcher.launch(exerciseDocument.uri, testDocument.uri, member_id);
     }
 
 
     // Python Execution
     //--------------------------------------------------
 
+    /** Parses challenge data from the subject exercise Python file. */
     private async python_ParseFile(pythonFileUri: vscode.Uri): Promise<Challenge[]> {
         KoanLog.info([EditorModel, this.python_ParseFile], pythonFileUri.toString());
 
@@ -487,7 +486,8 @@ export class EditorModel implements vscode.Disposable {
         const scriptPath: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Code.PYTHON_FILE);
         let result: string = '';
         try {
-            result = await Python.start_arguments(scriptPath, [pythonFileUri.fsPath]);
+            const processResult: ProcessResult = await Python.execute([scriptPath.fsPath, pythonFileUri.fsPath]);
+            result = processResult.output.join('\n');
         }
         catch (error) {
             KoanLog.error([EditorModel, this.python_ParseFile], 'Failed to parse Python file:', error);

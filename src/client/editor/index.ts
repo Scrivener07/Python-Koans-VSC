@@ -240,18 +240,14 @@ function onMessage_OutputUpdate(member_id: string, result: TestResult): void {
 
     if (!outputDiv) { return; }
 
-    // TODO: At some point earlier the message should be parsed.
-    const real_testResult: TestResult = JSON.parse(result.message);
-    console.log(real_testResult);
-
-    if (real_testResult.success) {
-        outputDiv.innerHTML = `<div class="test-result pass">✅ ${real_testResult.message}</div>`;
+    if (result.success) {
+        outputDiv.innerHTML = `<div class="test-result pass">✅ ${result.message}</div>`;
         if (statusIndicator) {
             statusIndicator.textContent = '✅';
             statusIndicator.setAttribute('data-status', 'pass');
         }
     } else {
-        outputDiv.innerHTML = `<div class="test-result fail">❌ ${real_testResult.message}</div>`;
+        outputDiv.innerHTML = `<div class="test-result fail">❌ ${result.message}</div>`;
         if (statusIndicator) {
             statusIndicator.textContent = '❌';
             statusIndicator.setAttribute('data-status', 'fail');

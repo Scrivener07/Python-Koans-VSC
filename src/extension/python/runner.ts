@@ -5,10 +5,11 @@ export class Runner {
     public static readonly PYTHON_FILE: string = 'runner.py';
 
 
-    public static async run(testScriptPath: vscode.Uri, pythonFilePath: string, member_id: string): Promise<{ success: boolean, message: string }> {
+    public static async run(testScriptUri: vscode.Uri, pythonFilePath: string, member_id: string): Promise<{ success: boolean, message: string }> {
         try {
             // Run the test for the specific challenge.
-            const output: string = await Python.start_arguments(testScriptPath, [pythonFilePath, member_id]);
+            const processResult = await Python.execute([testScriptUri.fsPath, pythonFilePath, member_id]);
+            const output: string = processResult.output.join('\n');
 
             // Parse the test result.
             const result = JSON.parse(output);

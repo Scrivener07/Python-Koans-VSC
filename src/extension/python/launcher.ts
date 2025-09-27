@@ -1,143 +1,71 @@
 import * as vscode from 'vscode';
-import { spawn } from 'child_process';
-import { ProcessEvents, Python, StreamEvents } from '.';
+import { Python, PythonOptions, Encoding, ProcessResult } from '.';
 import { TestFramework } from './testing';
-import { TestResult } from '../../shared';
+
+/** Python's unittest Writes to stderr by Design
+ * The Python unittest framework deliberately writes its output to stderr rather than stdout, even when tests pass.
+ *
+ * This is by design for two key reasons:
+ * - Separation of Concerns: stdout is reserved for the actual program output, while stderr is used for meta-information about the testing process
+ * - Pipeline Compatibility: Makes it easier to pipe program output while still seeing test results
+ */
+
+// These are the identities when starting the `exercise_test.py` as a *program* file.
+// __main__.Testing.test_challenge_01
+// __main__.Testing.test_challenge_02
+// __main__.Testing.test_challenge_03
+// __main__.Testing.test_challenge_04
+// __main__.Testing.test_challenge_05
+
+// These are the identites when started as a module.
+// exercise_test.Testing.test_challenge_01
+// exercise_test.Testing.test_challenge_02
+// exercise_test.Testing.test_challenge_03
 
 export class Launcher {
 
-    /** The Python unit test launcher script to use. */
-    public static readonly PYTHON_FILE: string = 'launcher.py';
-
 
     public static async launch(
-        toolFileUri: vscode.Uri,
-        pythonFileUri: vscode.Uri,
+        exerciseFileUri: vscode.Uri,
+        testFileUri: vscode.Uri,
         member_id: string
-    ): Promise<TestResult> {
-        try {
-            const pythonFilePath: string = pythonFileUri.fsPath;
+    ): Promise<ProcessResult> {
+        // Get file system paths to use.
+        const exerciseFilePath: string = exerciseFileUri.fsPath;
+        const testFilePath: string = testFileUri.fsPath;
 
-            // TODO: This is a hack to shift the Python directory location.
-            let identity = TestFramework.getIdentity(pythonFilePath, member_id);
-            identity = identity.replace("C01.", "");
+        // Get the exercise test identity to use.
+        let identity = TestFramework.getIdentity(exerciseFilePath, member_id);
 
-            // Get file path information.
-            const path: string[] = TestFramework.split_path(pythonFilePath);
-            const fileDirectory: string = path.slice(0, -1).join("\\").toString();
-            const fileName: string | undefined = path.pop();
-            if (!fileName) {
-                throw new Error("The file name was undefined.");
-            }
+        // TODO: This is a hack to shift the Python directory location. (didnt work)
+        identity = identity.replace("C01.", "");
 
-            // Set working directory to the file directory.
-            const options = {
-                cwd: fileDirectory,
-                env: {
-                    ...process.env,
-                    'PYTHONPATH': fileDirectory
-                }
-            };
+        // Get file path information.
+        const path: string[] = TestFramework.split_path(exerciseFilePath);
 
+        // Get file directory for module.
+        const fileDirectory: string = path.slice(0, -1).join("\\").toString();
 
-            // Execute the Python process.
-            const python = spawn('python', [
-                // fileName,
-                toolFileUri.fsPath,
-                'identity', identity
-            ], options);
+        // Get parent file directory for module.
+        const parentFileDirectory: string = path.slice(0, -2).join("\\").toString();
 
-            // Handle the process instance.
-            return new Promise((resolve, reject) => {
-                let data_stdout: string = '';
-                let data_stderr: string = '';
-
-                python.on(ProcessEvents.Spawn, () => {
-                    console.log(`Process ${ProcessEvents.Spawn}: '${fileName}'`);
-                });
-
-                python.stdout.on(StreamEvents.Data, (data) => {
-                    console.log(`Process stream-out ${StreamEvents.Data}: '${fileName}'`);
-                    data_stdout += data;
-                });
-
-                python.stderr.on(StreamEvents.Data, (data) => {
-                    console.log(`Process stream-error ${StreamEvents.Data}: '${fileName}'`);
-                    data_stderr += data;
-                });
-
-                // TODO: WIP
-                python.on(ProcessEvents.Close, (code) => {
-                    console.log(`Process ${ProcessEvents.Close}: '${fileName}'`);
-                    if (data_stdout.trim()) {
-                        const result: TestResult = {
-                            success: true,
-                            message: data_stdout
-                        };
-                        resolve(result);
-                    }
-                    else if (data_stderr.trim()) {
-                        // Otherwise reject with the error info.
-                        reject(new Error(`Python error: ${data_stderr}`));
-                    }
-                    else if (code !== 0) {
-                        // If no output but non-zero exit code.
-                        reject(new Error(`Python process exited with code ${code}.`));
-                    }
-                    else {
-                        // No output but successful exit is suspicious.
-                        reject(new Error('Test launcher produced no output.'));
-                    }
-                });
-
-                python.on(ProcessEvents.Error, (error) => {
-                    console.log(`Process error ${ProcessEvents.Error}: '${pythonFileUri}'`);
-                    reject(new Error(`Failed to run test: ${error.message}`));
-                });
-            });
-        } catch (error) {
-            const result: TestResult = {
-                success: false,
-                message: `Error executing test: ${error instanceof Error ? error.message : String(error)}`
-            };
-            console.log(`Error ${ProcessEvents.Error}: '${pythonFileUri}'`, result);
-            return result;
-        }
-    }
-
-
-    public static async run_Original(
-        programFileUri: vscode.Uri,
-        pythonFileUri: vscode.Uri,
-        member_id: string
-    ): Promise<{ success: boolean, message: string }> {
-        const pythonFilePath: string = pythonFileUri.fsPath;
-
-        // Form the fully qualified test ID for the specific function
-        const testId = TestFramework.get_ID(pythonFilePath, member_id);
-
-        // Create the Python launcher command.
-        let output: string = '';
-        try {
-            // Execute the Python test launcher.
-            output = await Python.start_arguments(programFileUri, [
-                pythonFilePath,
-                testId
-            ]);
-        } catch (error) {
-            console.error("Error running test:", error);
-            return {
-                success: false,
-                message: `Error executing test: ${error instanceof Error ? error.message : String(error)}`
-            };
+        // Get the file name which is the last element.
+        const fileName: string | undefined = path.pop();
+        if (!fileName) {
+            throw new Error("The file name was undefined.");
         }
 
-        // Parse the test result
-        const result: any = JSON.parse(output);
-        return {
-            success: result.success,
-            message: result.message || (result.success ? "Test passed!" : "Test failed.")
-        };
+        // Execute the Python process.
+        // Set working directory to the file directory.
+        // NOTE: Excluding `identity` parameter runs all discovered unit-tests.
+        return Python.execute([
+            '-m', 'exercise_test',
+            'identity', identity
+        ], {
+            cwd: fileDirectory,
+            encoding: Encoding.UTF8,
+            pythonPath: fileDirectory
+        });
     }
 
 
