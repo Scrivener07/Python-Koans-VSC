@@ -1,15 +1,14 @@
 import * as vscode from 'vscode';
 import { KoanLog } from '../log';
-import { Manifest, Challenge } from './data';
-import { DocumentInfo, EditorCommands, TestResult, WebviewMessage } from '../../shared';
+import { Manifest, ChallengeData } from './data';
+import { DocumentInfo, WebCommands, Challenge, TestResult, WebMessage, InitializeCommand, OutputUpdateCommand } from '../../shared';
 import { KoanDocumentProvider } from './documents';
 import { Python, ProcessResult } from '../python';
 import { Launcher } from '../python/launcher';
 import { Code } from '../python/code';
 import { Updater } from '../python/updater';
 
-
-// TODO: Ensure are created disposables are registered for disposal.
+// TODO: Ensure any created disposables are registered for disposal.
 
 export class EditorModel implements vscode.Disposable {
 
@@ -76,6 +75,9 @@ export class EditorModel implements vscode.Disposable {
             ]
         };
 
+        // Set the webview's initial HTML content.
+        await this.render();
+
         // Parse the koan JSON manifest.
         try {
             this.read();
@@ -83,6 +85,15 @@ export class EditorModel implements vscode.Disposable {
             console.error('Failed to read koan manifest:', error);
             return;
         }
+
+        const documentInfo: DocumentInfo = {
+            fileName: this.document.fileName,
+            uri: this.document.uri.path,
+            language: this.document.languageId,
+            lineCount: this.document.lineCount,
+            encoding: this.document.encoding,
+            content: this.document.getText()
+        };
 
 
         // Get the backing Python file specified in the manifest.
@@ -103,42 +114,34 @@ export class EditorModel implements vscode.Disposable {
         };
 
         // Get the challenge data parsed from Python source code.
-        let parsedPythonData: Challenge[];
+        let challenges: ChallengeData[];
         try {
-            parsedPythonData = await this.python_ParseFile(exerciseDocument.uri);
+            challenges = await this.getChallenges(exerciseDocument.uri);
         } catch (error) {
             console.error('Failed to parse Python file:', error);
             return;
         }
 
-        // Set the webview's initial HTML content.
-        await this.render();
-
-        // Build the message data.
-        const challenges: Challenge[] = Array.from(parsedPythonData.values());
-        const challenges_map = challenges.map(challenge => ({
-            name: challenge.name,
-            instruction: challenge.instruction,
-            code: challenge.code
-        }));
-
-        const documentInfo: DocumentInfo = {
-            fileName: this.document.fileName,
-            uri: this.document.uri.path,
-            language: this.document.languageId,
-            lineCount: this.document.lineCount,
-            encoding: this.document.encoding,
-            content: this.document.getText()
-        };
-
-        const message = {
-            command: EditorCommands.Data_Initialize,
+        // Pack the values into a web message.
+        const message: InitializeCommand = {
+            command: WebCommands.Data_Initialize,
             documentInfo: documentInfo,
             pythonDocumentInfo: exerciseDocumentInfo,
-            challenges: challenges_map
+            challenges: challenges
         };
 
         this.panel.webview.postMessage(message);
+    }
+
+
+    // Data
+    //--------------------------------------------------
+
+    /** Parses challenge data from the subject exercise Python file. */
+    private async getChallenges(pythonFileUri: vscode.Uri): Promise<ChallengeData[]> {
+        KoanLog.info([EditorModel, this.getChallenges], pythonFileUri.toString());
+        const scriptPath: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Code.PYTHON_FILE);
+        return await Code.getChallenges(scriptPath, pythonFileUri);
     }
 
 
@@ -212,7 +215,7 @@ export class EditorModel implements vscode.Disposable {
     //--------------------------------------------------
 
     private async render(): Promise<void> {
-        const html = await this.render_index();
+        const html = this.render_index();
         this.panel.webview.html = html;
     }
 
@@ -221,7 +224,7 @@ export class EditorModel implements vscode.Disposable {
      * Generate the HTML content for the webview.
      * @returns The generated HTML content.
      */
-    private async render_index(): Promise<string> {
+    private render_index(): string {
         KoanLog.info([EditorModel, this.render_index], this.document.uri.toString());
         const editor_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootResource, 'views', 'editor', 'editor.css'));
         const common_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootResource, 'views', 'koan.css'));
@@ -272,7 +275,7 @@ export class EditorModel implements vscode.Disposable {
         </head>
 
         <body>
-            <p>Error loading HTML document.</p>
+            <p>The view had an error.</p>
             <p>${html_uri.toString()}</p>
             <pre>${error}</pre>
         </body>
@@ -293,32 +296,32 @@ export class EditorModel implements vscode.Disposable {
         KoanLog.info([EditorModel, this.onMessage], 'Command:', message.command);
 
         switch (message.command) {
-            case EditorCommands.Document_UpdateText:
+            case WebCommands.Document_Update:
                 this.handle_UpdateTextDocument(this.document, message.text);
                 break;
 
-            case EditorCommands.Code_Update:
+            case WebCommands.Code_Update:
                 this.handle_CodeUpdate(message.member_id, message.code);
                 break;
 
-            case EditorCommands.Code_RunTests:
+            case WebCommands.Code_RunTests:
                 this.handle_RunTests(message.member_id);
                 break;
 
-            case EditorCommands.Code_OpenVirtual:
+            case WebCommands.Code_OpenVirtual:
                 this.handle_CodeOpenVirtual(message.member_id);
                 break;
 
-            case EditorCommands.Output_Clear:
+            case WebCommands.Output_Clear:
                 vscode.window.showErrorMessage('Clear output functionality is not yet implemented.');
                 break;
 
-            case EditorCommands.Code_Reset:
+            case WebCommands.Code_Reset:
                 vscode.window.showErrorMessage('Code reset functionality is not yet implemented.');
                 // TODO: Reset the code snippet to its original state.
                 break;
 
-            case EditorCommands.Code_Format:
+            case WebCommands.Code_Format:
                 vscode.window.showErrorMessage('Code format functionality is not yet implemented.');
                 // TODO: Format the provided snippet and pass it back to the webview.
                 break;
@@ -415,15 +418,13 @@ export class EditorModel implements vscode.Disposable {
                 message += '\n';
             }
 
-            const testResult: TestResult = {
-                success: true,
-                message: message
-            };
-
-            const webMessage: WebviewMessage = {
-                command: EditorCommands.Output_Update,
+            const webMessage: OutputUpdateCommand = {
+                command: WebCommands.Output_Update,
                 member_id: member_id,
-                result: testResult
+                result: {
+                    success: true,
+                    message: message
+                }
             };
 
             // Send result back to webview.
@@ -453,14 +454,13 @@ export class EditorModel implements vscode.Disposable {
                 message += `Test execution failed: ${error}`;
             }
 
-            const testResult: TestResult = {
-                success: false,
-                message: message
-            };
-            const webMessage: WebviewMessage = {
-                command: EditorCommands.Output_Update,
+            const webMessage: OutputUpdateCommand = {
+                command: WebCommands.Output_Update,
                 member_id: member_id,
-                result: testResult
+                result: {
+                    success: false,
+                    message: message
+                }
             };
             this.panel.webview.postMessage(webMessage);
         }
@@ -471,51 +471,7 @@ export class EditorModel implements vscode.Disposable {
         KoanLog.info([EditorModel, this.execute_TestLauncher], `ID: '${member_id}'`);
         const exerciseDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
         const testDocument: vscode.TextDocument = await this.get_test_document(this.manifest);
-        return Launcher.launch(exerciseDocument.uri, testDocument.uri, member_id);
-    }
-
-
-    // Python Execution
-    //--------------------------------------------------
-
-    /** Parses challenge data from the subject exercise Python file. */
-    private async python_ParseFile(pythonFileUri: vscode.Uri): Promise<Challenge[]> {
-        KoanLog.info([EditorModel, this.python_ParseFile], pythonFileUri.toString());
-
-        // Execute the Python script to parse the file.
-        const scriptPath: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Code.PYTHON_FILE);
-        let result: string = '';
-        try {
-            const processResult: ProcessResult = await Python.execute([scriptPath.fsPath, pythonFileUri.fsPath]);
-            result = processResult.output.join('\n');
-        }
-        catch (error) {
-            KoanLog.error([EditorModel, this.python_ParseFile], 'Failed to parse Python file:', error);
-            return [];
-        }
-
-        let parsedData: any;
-        try {
-            parsedData = JSON.parse(result);
-        } catch (error) {
-            KoanLog.error([EditorModel, this.python_ParseFile], 'Failed to parse JSON from Python output:', error);
-            return [];
-        }
-
-        if (!parsedData || !parsedData.challenges) {
-            throw new Error('Invalid data format returned from Python parser.');
-        }
-
-        try {
-            // Access the challenges array from the parsed data
-            const challenges: Challenge[] = parsedData.challenges.map(
-                (item: any) => new Challenge(item.name, item.instruction, item.code)
-            );
-            return challenges;
-        } catch (error) {
-            KoanLog.error([EditorModel, this.python_ParseFile], 'Failed to create Challenge instances:', error);
-            return [];
-        }
+        return Launcher.execute(exerciseDocument.uri, testDocument.uri, member_id);
     }
 
 

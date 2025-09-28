@@ -1,5 +1,5 @@
 import { createChallengeElement } from './challenge';
-import { EditorCommands, TestResult, DocumentInfo } from '../../shared/messaging';
+import { WebCommands, WebMessage, TestResult, DocumentInfo, Challenge, InitializeCommand } from '../../shared/messaging';
 
 
 // VS Code API
@@ -18,13 +18,15 @@ const vscode = acquireVsCodeApi();
 // View
 //--------------------------------------------------
 
-console.log('WebView:constructor');
+function main() {
+    console.log('WebView:constructor');
 
-// Message handling from extension.
-window.addEventListener('message', onMessage);
+    // Load templates when the page loads.
+    document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
 
-// Load templates when the page loads.
-document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
+    // Message handling from extension.
+    window.addEventListener('message', onMessage);
+}
 
 
 // Browser Document
@@ -40,12 +42,12 @@ async function onDOMContentLoaded(event: Event) {
 
 function onMessage(event: MessageEvent<any>) {
     console.log('Message received from extension:', event.data);
-    const message = event.data;
+    const message = event.data as WebMessage;
     switch (message.command) {
-        case EditorCommands.Data_Initialize:
-            onMessage_Initialize(message.documentInfo, message.challenges);
+        case WebCommands.Data_Initialize:
+            onMessage_Initialize(message);
             break;
-        case EditorCommands.Output_Update:
+        case WebCommands.Output_Update:
             onMessage_OutputUpdate(message.member_id, message.result);
             break;
         default:
@@ -63,7 +65,7 @@ function document_preview_raw() {
         textarea.addEventListener('input', () => {
             // The text of the actual `*.koan` file json data.
             vscode.postMessage({
-                command: EditorCommands.Document_UpdateText,
+                command: WebCommands.Document_Update,
                 text: textarea.value
             });
         });
@@ -81,25 +83,36 @@ function updateCellPreview(member_id: string, content: string): void {
 
 
 // New function to populate the UI with data.
-function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
+function onMessage_Initialize(data: InitializeCommand) {
     // Populate the document details.
     const detailsContainer = document.getElementById('document-details');
     if (detailsContainer) {
         detailsContainer.innerHTML = `
         <details>
-            <summary>Document Details</summary>
+            <summary>Document</summary>
             <ul>
-                <li><b>File:</b> ${documentInfo.fileName}</li>
-                <li><b>URI:</b> ${documentInfo.uri}</li>
-                <li><b>Language:</b> ${documentInfo.language}</li>
-                <li><b>Lines:</b> ${documentInfo.lineCount}</li>
-                <li><b>Characters:</b> ${documentInfo.content.length}</li>
+                <li><b>File:</b> ${data.documentInfo.fileName}</li>
+                <li><b>URI:</b> ${data.documentInfo.uri}</li>
+                <li><b>Language:</b> ${data.documentInfo.language}</li>
+                <li><b>Lines:</b> ${data.documentInfo.lineCount}</li>
+                <li><b>Characters:</b> ${data.documentInfo.content.length}</li>
             </ul>
         </details>
         <details>
+            <summary>Document: Exercise</summary>
+            <ul>
+                <li><b>File:</b> ${data.pythonDocumentInfo.fileName}</li>
+                <li><b>URI:</b> ${data.pythonDocumentInfo.uri}</li>
+                <li><b>Language:</b> ${data.pythonDocumentInfo.language}</li>
+                <li><b>Lines:</b> ${data.pythonDocumentInfo.lineCount}</li>
+                <li><b>Characters:</b> ${data.pythonDocumentInfo.content.length}</li>
+            </ul>
+        </details>
+
+        <details>
             <summary>Document Source</summary>
             <p>This is the full text of the document being edited.</p>
-            <textarea class="output-content">${documentInfo.content}</textarea>
+            <textarea class="output-content">${data.documentInfo.content}</textarea>
         </details>
     `;
     }
@@ -111,7 +124,7 @@ function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
         challengesContainer.innerHTML = '';
 
         // Add each challenge.
-        challenges.forEach(challenge => {
+        data.challenges.forEach(challenge => {
             const challengeElement = createChallengeElement(challenge);
             challengesContainer.appendChild(challengeElement);
         });
@@ -122,7 +135,7 @@ function onMessage_Initialize(documentInfo: DocumentInfo, challenges: any[]) {
     if (textarea) {
         textarea.addEventListener('input', () => {
             vscode.postMessage({
-                command: EditorCommands.Document_UpdateText,
+                command: WebCommands.Document_Update,
                 text: textarea.value
             });
         });
@@ -170,7 +183,7 @@ function handleCodeEditorChange(challengeId: string, newCode: string) {
     const delay: number = 1000;
     updateTimeout = setTimeout(() => {
         vscode.postMessage({
-            command: EditorCommands.Code_Update,
+            command: WebCommands.Code_Update,
             member_id: challengeId,
             code: newCode
         });
@@ -185,14 +198,14 @@ function handleCodeEditorChange(challengeId: string, newCode: string) {
 // Challenge Functions
 function Code_RunTest(member_id: string): void {
     vscode.postMessage({
-        command: EditorCommands.Code_RunTests,
+        command: WebCommands.Code_RunTests,
         member_id: member_id
     });
 }
 
 function Code_OpenVirtual(member_id: string): void {
     vscode.postMessage({
-        command: EditorCommands.Code_OpenVirtual,
+        command: WebCommands.Code_OpenVirtual,
         member_id: member_id
     });
 }
@@ -206,14 +219,14 @@ function onClick_InstructionToggle(challenge_id: string): void {
 
 function Code_Reset(member_id: string): void {
     vscode.postMessage({
-        command: EditorCommands.Code_Reset,
+        command: WebCommands.Code_Reset,
         member_id: member_id
     });
 }
 
 function Code_Format(member_id: string): void {
     vscode.postMessage({
-        command: EditorCommands.Code_Format,
+        command: WebCommands.Code_Format,
         member_id: member_id
     });
 }
@@ -225,7 +238,7 @@ function Output_Clear(member_id: string): void {
     }
 
     vscode.postMessage({
-        command: EditorCommands.Output_Clear,
+        command: WebCommands.Output_Clear,
         member_id: member_id
     });
 }
@@ -266,3 +279,7 @@ function onMessage_OutputUpdate(member_id: string, result: TestResult): void {
 (window as any).resetChallenge = Code_Reset;
 (window as any).formatCode = Code_Format;
 (window as any).clearOutput = Output_Clear;
+
+// Main
+//--------------------------------------------------
+main();

@@ -1,3 +1,5 @@
+import { Challenge } from "../../shared";
+
 export class Manifest {
     /** The Python exercise file path. */
     public exercise: string;
@@ -50,7 +52,7 @@ export class Manifest {
 }
 
 
-export class Challenge {
+export class ChallengeData implements Challenge {
     // This is the unique identifier for the challenge.
     // For now it is the name of the Python function.
     public name: string;
@@ -67,14 +69,5 @@ export class Challenge {
         this.instruction = instruction;
         this.code = code;
     }
-
-
-    /**
-     * Gets a short description derived from the first 30 characters of the instruction text.
-     */
-    public description(): string {
-        return `${this.instruction.substring(0, 30)}...`;
-    }
-
 
 }
