@@ -1,3 +1,6 @@
+import { TestSuite as TestSuite, TestCase, TestAssertion, TestStatus } from './testing';
+
+
 // Union type of all possible commands
 export type WebMessage =
     | InitializeCommand
@@ -46,7 +49,7 @@ export interface CodeRunCommand extends WebCommand {
 export interface OutputUpdateCommand extends WebCommand {
     command: WebCommands.Output_Update;
     member_id: string;
-    result: TestResult;
+    suite: TestSuite;
 }
 
 
@@ -64,10 +67,4 @@ export interface Challenge {
     name: string;
     instruction: string;
     code: string;
-}
-
-
-export interface TestResult {
-    success: boolean;
-    message: string;
 }

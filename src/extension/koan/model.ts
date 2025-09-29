@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import { KoanLog } from '../log';
 import { Manifest, ChallengeData } from './data';
-import { DocumentInfo, WebCommands, Challenge, TestResult, WebMessage, InitializeCommand, OutputUpdateCommand } from '../../shared';
+import { DocumentInfo, WebCommands, Challenge, WebMessage, InitializeCommand, OutputUpdateCommand } from '../../shared';
 import { KoanDocumentProvider } from './documents';
-import { Python, ProcessResult } from '../python';
-import { Launcher } from '../python/launcher';
+import { TestFramework } from '../python/testing';
 import { Code } from '../python/code';
 import { Updater } from '../python/updater';
+import { TestSuite as TestSuite, TestCase, TestAssertion, TestStatus } from '../../shared/testing';
 
 // TODO: Ensure any created disposables are registered for disposal.
 
@@ -401,77 +401,21 @@ export class EditorModel implements vscode.Disposable {
     /** Handles starting the Python test framework runner for a given test identity. */
     private async handle_RunTests(member_id: string): Promise<void> {
         KoanLog.info([EditorModel, this.handle_RunTests], `ID: '${member_id}'`);
+        const testDocument: vscode.TextDocument = await this.get_test_document(this.manifest);
         try {
-            const processResult: ProcessResult = await this.execute_TestLauncher(member_id);
-
-            let message: string = '\n';
-            if (processResult.output) {
-                message += 'Output:\n';
-                message += processResult.output.join('\n');
-                message += '\n';
-            }
-
-            // NOTE: Errors are actually test results for Python `unittest` framework.
-            if (processResult.errors) {
-                message += 'Results:\n';
-                message += processResult.errors.join('\n');
-                message += '\n';
-            }
-
-            const webMessage: OutputUpdateCommand = {
+            const suite: TestSuite = await TestFramework.execute(testDocument.uri, member_id);
+            const outputUpdateCommand: OutputUpdateCommand = {
                 command: WebCommands.Output_Update,
                 member_id: member_id,
-                result: {
-                    success: true,
-                    message: message
-                }
+                suite: suite
             };
 
             // Send result back to webview.
-            this.panel.webview.postMessage(webMessage);
+            this.panel.webview.postMessage(outputUpdateCommand);
         }
         catch (error) {
-            // This is an actual error.
             KoanLog.error([EditorModel, this.handle_RunTests], 'Test execution failed:', error);
-            let message: string = '';
-            if (error instanceof Error) {
-                message += 'Error:\n';
-                message += error.message;
-                message += '\n';
-                const result: ProcessResult = error.cause as ProcessResult;
-                if (result) {
-                    message += 'Cause:\n';
-                    message += result.errors.join('\n');
-                    message += '\n';
-                }
-                else if (error.cause) {
-                    message += 'Cause:\n';
-                    message += error.cause;
-                    message += '\n';
-                }
-            }
-            else {
-                message += `Test execution failed: ${error}`;
-            }
-
-            const webMessage: OutputUpdateCommand = {
-                command: WebCommands.Output_Update,
-                member_id: member_id,
-                result: {
-                    success: false,
-                    message: message
-                }
-            };
-            this.panel.webview.postMessage(webMessage);
         }
-    }
-
-
-    private async execute_TestLauncher(member_id: string): Promise<ProcessResult> {
-        KoanLog.info([EditorModel, this.execute_TestLauncher], `ID: '${member_id}'`);
-        const exerciseDocument: vscode.TextDocument = await this.get_exercise_document(this.manifest);
-        const testDocument: vscode.TextDocument = await this.get_test_document(this.manifest);
-        return Launcher.execute(exerciseDocument.uri, testDocument.uri, member_id);
     }
 
 

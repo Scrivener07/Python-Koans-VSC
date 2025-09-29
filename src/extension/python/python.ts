@@ -18,12 +18,6 @@ export enum Encoding {
 }
 
 
-// enum PythonEnvironment {
-//     PATH = 'PYTHONPATH',
-//     ENCODING = 'PYTHONIOENCODING'
-// }
-
-
 export enum ProcessEvents {
     Close = 'close',
     Disconnect = 'disconnect',
@@ -48,8 +42,9 @@ export class ProcessResult {
 
 
 export class Python {
-    public static readonly PATH: string = "PYTHONPATH";
-    public static readonly ENCODING: string = "PYTHONIOENCODING";
+    private static readonly Executable: string = 'python';
+    private static readonly PATH: string = 'PYTHONPATH';
+    private static readonly ENCODING: string = 'PYTHONIOENCODING';
 
 
     /** Execute a Python process and collect the results (stdout/stderr). */
@@ -76,7 +71,7 @@ export class Python {
             environment[Python.PATH] = options.pythonPath;
         }
 
-        return spawn('python', args, {
+        return spawn(Python.Executable, args, {
             cwd: options.cwd,
             env: environment
         });
@@ -97,7 +92,6 @@ export class Python {
 
             python.on(ProcessEvents.Spawn, () => {
                 console.log(`Process[${python.pid}]:${ProcessEvents.Spawn}`);
-                result.processID = python.pid;
             });
 
             python.stdout.on(StreamEvents.Data, (data) => {
@@ -114,15 +108,7 @@ export class Python {
                 console.log(`Process[${python.pid}] ${ProcessEvents.Close}`);
                 result.processID = python.pid;
                 result.exitCode = code;
-                if (code !== 0) {
-                    const exitError = new Error();
-                    exitError.message = `Python process exited with code ${code}.`;
-                    exitError.cause = result;
-                    reject(exitError);
-                }
-                else {
-                    resolve(result);
-                }
+                resolve(result);
             });
         });
     }

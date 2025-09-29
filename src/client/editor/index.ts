@@ -1,5 +1,6 @@
 import { createChallengeElement } from './challenge';
-import { WebCommands, WebMessage, TestResult, DocumentInfo, Challenge, InitializeCommand } from '../../shared/messaging';
+import { WebCommands, WebMessage, DocumentInfo, Challenge, InitializeCommand } from '../../shared/messaging';
+import { StatusIcon, TestAssertion, TestCase, TestStatus, TestSuite } from '../../shared/testing';
 
 
 // VS Code API
@@ -48,7 +49,7 @@ function onMessage(event: MessageEvent<any>) {
             onMessage_Initialize(message);
             break;
         case WebCommands.Output_Update:
-            onMessage_OutputUpdate(message.member_id, message.result);
+            onMessage_OutputUpdate(message.suite);
             break;
         default:
             console.log('Unknown message from extension:', message);
@@ -247,24 +248,65 @@ function Output_Clear(member_id: string): void {
 // Command Response Handlers
 //--------------------------------------------------
 
-function onMessage_OutputUpdate(member_id: string, result: TestResult): void {
-    const outputDiv = document.getElementById(`${member_id}_output`);
-    const statusIndicator = document.querySelector(`[data-challenge-id="${member_id}"] .challenge-status`);
+function onMessage_OutputUpdate(suite: TestSuite): void {
+    if (!suite.cases) {
+        console.error('The testing suite had no test cases.');
+        return;
+    }
 
-    if (!outputDiv) { return; }
+    if (suite.cases.length !== 1) {
+        console.error(`The testing suite must have 1 test case, but had ${suite.cases.length}.`);
+        return;
+    }
 
-    if (result.success) {
-        outputDiv.innerHTML = `<div class="test-result pass">✅ ${result.message}</div>`;
-        if (statusIndicator) {
-            statusIndicator.textContent = '✅';
-            statusIndicator.setAttribute('data-status', 'pass');
+    const testCase: TestCase = suite.cases[0];
+
+    const outputDiv: HTMLElement | null = document.getElementById(`${testCase.member_id}_output`);
+    if (!outputDiv) {
+        console.error('Could not get the test output element from DOM.');
+        return;
+    }
+
+    // Build complete HTML outside the loop.
+    let outputContent: string = '';
+
+    // Add test results.
+    outputContent += '<h4>Test Results:</h4>';
+    outputContent += `<div class="test-item">${testCase.message}</div>`;
+
+    if (testCase.assertions) {
+        outputContent += '<h4>Case Assertions:</h4>';
+        for (let index = 0; index < testCase.assertions.length; index++) {
+            const assertion: TestAssertion = testCase.assertions[index];
+            outputContent += `<div class="test-item">${assertion.message}</div>`;
         }
-    } else {
-        outputDiv.innerHTML = `<div class="test-result fail">❌ ${result.message}</div>`;
-        if (statusIndicator) {
-            statusIndicator.textContent = '❌';
-            statusIndicator.setAttribute('data-status', 'fail');
+    }
+
+    // Add standard output
+    if (suite.output && suite.output.length > 0) {
+        outputContent += '<h4>Standard Output:</h4>';
+        for (let index = 0; index < suite.output.length; index++) {
+            // Convert to string explicitly.
+            const outputMessage: string = String(suite.output[index]);
+            outputContent += `<div class="output-item">${outputMessage}</div>`;
         }
+    }
+
+    // Show fallback message if no content was generated.
+    if (!outputContent) {
+        outputContent = '<div class="output-empty">No output was generated.</div>';
+    }
+
+    // Create a container with appropriate styling based on success.
+    const resultClass = suite.status === TestStatus.Passed ? 'pass' : 'fail';
+    const icon = suite.status === TestStatus.Passed ? StatusIcon.Passed : StatusIcon.Failed;
+    outputDiv.innerHTML = `<div class="test-result ${resultClass}">${icon} ${outputContent}</div>`;
+
+    // Update status indicator.
+    const statusIndicator: Element | null = document.querySelector(`[data-challenge-id="${testCase.member_id}"] .challenge-status`);
+    if (statusIndicator) {
+        statusIndicator.textContent = icon;
+        statusIndicator.setAttribute('data-status', resultClass);
     }
 }
 
