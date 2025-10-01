@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import { Python, Encoding, ProcessResult } from '.';
-import { TestSuite as TestSuite, TestCase, TestAssertion, TestStatus } from '../../shared/testing';
-
+import { Python, Encoding } from '.';
+import { TestSuite, TestStatus } from '../../shared/testing';
 
 export class TestFramework {
 
@@ -32,110 +31,86 @@ export class TestFramework {
         }
 
         // Execute the Python process.
-        const processResult: ProcessResult = await Python.execute([
+        const process = Python.spawn([
             '-m', moduleName,
             "client",
             'identity', identity
         ], {
             cwd: fileDirectory,
             encoding: Encoding.UTF8,
-            pythonPath: fileDirectory
+            pythonPath: fileDirectory,
+            pipeData: true
         });
 
-        // NOTE: Make sure to convert Buffers to strings.
-        const stdout: string[] = processResult.output.map(String);
-        const stderr: string[] = processResult.errors.map(String);
+        // Capture the test results.
+        const [result, test_suite] = await Promise.all([
+            Python.monitor(process),
+            Python.pipe_json(process)
+        ]);
 
-
-        // Populate the test case assertions.
-        const case_assertions: TestAssertion[] = [];
-        for (let index = 0; index < stderr.length; index++) {
-            const element: string = stderr[index];
-            const assertion: TestAssertion = {
-                passed: false,
-                message: element,
-                expected: undefined,
-                actual: undefined,
-                location: undefined
-            };
-            case_assertions.push(assertion);
+        if (!result) {
+            throw new Error("Failed to retrieve process result.");
+        }
+        else if (!test_suite) {
+            throw new Error("Failed to retrieve test data.");
         }
 
-        const testCase: TestCase = {
-            member_id: member_id,
-            identity: identity,
-            status: TestStatus.Skipped,
-            message: 'CASE_MESSAGE_GOES_HERE',
-            duration: 0,
-            assertions: case_assertions
-        };
-
-
-        const summary = this.parseDetails(stderr);
+        // NOTE: Make sure to convert Buffers to strings.
+        const stdout: string[] = result.output.map(String);
+        const stderr: string[] = result.errors.map(String);
         const suite: TestSuite = {
             identity: identity,
-            status: TestFramework.toStatus(processResult.exitCode),
-            message: 'SUITE_MESSAGE_GOES_HERE',
+            status: TestFramework.exitToStatus(result.exitCode),
+            message: test_suite.wasSuccessful ? "All tests passed" : "Some tests failed",
             summary: {
-                testsRun: summary.testsRun,
-                passed: summary.passed,
-                failed: summary.failed,
-                errors: summary.errors,
-                duration: 0
+                testsRun: test_suite.summary.testsRun,
+                passed: test_suite.summary.passed,
+                failed: test_suite.summary.failed,
+                errors: test_suite.summary.errors,
+                duration: test_suite.summary.duration
             },
-            cases: [
-                testCase
-            ],
+            cases: test_suite.cases.map((test_case: any) => ({
+                member_id: member_id,
+                identity: test_case.id,
+                status: this.stringToStatus(test_case.status),
+                message: test_case.message,
+                duration: test_case.duration,
+                assertions: []
+            })),
             output: stdout
         };
-
-        console.log(JSON.stringify(suite));
         return suite;
     }
 
 
-    private static toStatus(exitCode: number | null): TestStatus {
-        switch (exitCode) {
-            case 0:
-                return TestStatus.Passed;
-            case 1:
-                return TestStatus.Failed;
-            default:
-                return TestStatus.Error;
+    private static exitToStatus(exitCode: number | null): TestStatus {
+        if (exitCode === null) {
+            return TestStatus.Unknown;
+        } else if (exitCode === 0) {
+            return TestStatus.Passed;
+        } else if (exitCode === 1) {
+            return TestStatus.Failed;
+        } else if (exitCode >= 2) {
+            return TestStatus.Error;
+        } else {
+            return TestStatus.Unknown;
         }
     }
 
 
-    private static parseDetails(stderr: string[]): { testsRun: number, passed: number, failed: number, errors: number } {
-        let testsRun: number = 0;
-        let failed: number = 0;
-        let errors: number = 0;
-
-        // Parse the unittest output format.
-        for (const line of stderr) {
-            // "Ran X tests in Y.ZZZs"
-            const runMatch: RegExpMatchArray | null = line.match(/Ran (\d+) test/);
-            if (runMatch) {
-                testsRun = parseInt(runMatch[1], 10);
-            }
-
-            // "FAILED (failures=X, errors=Y)"
-            if (line.includes('FAILED')) {
-                const failMatch: RegExpMatchArray | null = line.match(/failures=(\d+)/);
-                const errorMatch: RegExpMatchArray | null = line.match(/errors=(\d+)/);
-
-                if (failMatch) {
-                    failed = parseInt(failMatch[1], 10);
-                }
-                if (errorMatch) {
-                    errors = parseInt(errorMatch[1], 10);
-                }
-            }
+    private static stringToStatus(status: string): TestStatus {
+        switch (status.trim().toLowerCase()) {
+            case 'passed':
+                return TestStatus.Passed;
+            case 'failed':
+                return TestStatus.Failed;
+            case 'error':
+                return TestStatus.Error;
+            case 'skipped':
+                return TestStatus.Skipped;
+            default:
+                return TestStatus.Unknown;
         }
-
-        // Calculate passed tests.
-        const passed: number = testsRun - failed - errors;
-        return { testsRun, passed, failed, errors };
     }
 
 

@@ -5,6 +5,7 @@ export interface PythonOptions {
     cwd?: string;
     pythonPath?: string;
     encoding?: Encoding;
+    pipeData?: boolean
 }
 
 
@@ -29,7 +30,9 @@ export enum ProcessEvents {
 
 
 export enum StreamEvents {
+    Error = 'error',
     Data = 'data',
+    End = 'end'
 }
 
 
@@ -46,6 +49,8 @@ export class Python {
     private static readonly PATH: string = 'PYTHONPATH';
     private static readonly ENCODING: string = 'PYTHONIOENCODING';
 
+    private static readonly PIPE_DATA: number = 3;
+
 
     /** Execute a Python process and collect the results (stdout/stderr). */
     public static execute(
@@ -58,7 +63,7 @@ export class Python {
 
 
     /** Internal method to set up and spawn a Python process. */
-    private static spawn(
+    public static spawn(
         args: string[] = [],
         options: PythonOptions = {}
     ): ChildProcessWithoutNullStreams {
@@ -73,13 +78,17 @@ export class Python {
 
         return spawn(Python.Executable, args, {
             cwd: options.cwd,
-            env: environment
+            env: environment,
+            // stdin@0, stdout@1, stderr@2, fd_json@3
+            stdio: options.pipeData ?
+                ['pipe', 'pipe', 'pipe', 'pipe'] :  // With JSON pipe
+                ['pipe', 'pipe', 'pipe']            // Standard pipes only
         });
     }
 
 
     /** Monitor process execution to collect results. */
-    private static monitor(
+    public static monitor(
         python: ChildProcessWithoutNullStreams
     ): Promise<ProcessResult> {
         return new Promise((resolve, reject) => {
@@ -94,15 +103,19 @@ export class Python {
                 console.log(`Process[${python.pid}]:${ProcessEvents.Spawn}`);
             });
 
-            python.stdout.on(StreamEvents.Data, (data) => {
-                console.log(`Process[${python.pid}]:stdout:${StreamEvents.Data}:`, String(data));
-                result.output.push(data);
-            });
+            if (python.stdout) {
+                python.stdout.on(StreamEvents.Data, (data) => {
+                    console.log(`Process[${python.pid}]:stdout:${StreamEvents.Data}:`, String(data));
+                    result.output.push(data);
+                });
+            }
 
-            python.stderr.on(StreamEvents.Data, (data) => {
-                console.log(`Process[${python.pid}]:stderr:${StreamEvents.Data}:`, String(data));
-                result.errors.push(data);
-            });
+            if (python.stderr) {
+                python.stderr.on(StreamEvents.Data, (data) => {
+                    console.log(`Process[${python.pid}]:stderr:${StreamEvents.Data}:`, String(data));
+                    result.errors.push(data);
+                });
+            }
 
             python.on(ProcessEvents.Close, (code) => {
                 console.log(`Process[${python.pid}] ${ProcessEvents.Close}`);
@@ -110,6 +123,56 @@ export class Python {
                 result.exitCode = code;
                 resolve(result);
             });
+        });
+    }
+
+
+    public static pipe_json(process: ChildProcessWithoutNullStreams): Promise<any> {
+        if (process.stdio.length < Python.PIPE_DATA) {
+            console.error("JSON pipe stream not available.");
+            return Promise.resolve(null);
+        }
+
+        const pipe = process.stdio[Python.PIPE_DATA];
+        if (!pipe) {
+            console.error("JSON pipe stream was null or undefined.");
+            return Promise.resolve(null);
+        }
+
+        // Create a promise to handle the JSON data.
+        return new Promise<any>((resolve) => {
+            let text: string = '';
+            let hasData = false;
+
+            pipe.on(StreamEvents.Data, (data) => {
+                hasData = true;
+                text += data.toString();
+            });
+
+            pipe.on(StreamEvents.End, () => {
+                if (!hasData) {
+                    console.warn('JSON pipe closed without sending any data.');
+                    resolve(null);
+                    return;
+                }
+                try {
+                    if (text.trim()) {
+                        resolve(JSON.parse(text));
+                    } else {
+                        console.warn('JSON pipe sent empty data.');
+                        resolve(null);
+                    }
+                } catch (error) {
+                    console.error('Failed to parse JSON:', error, 'Data:', text);
+                    resolve(null);
+                }
+            });
+
+            pipe.on(StreamEvents.Error, (err) => {
+                console.error('JSON pipe error:', err);
+                resolve(null);
+            });
+
         });
     }
 

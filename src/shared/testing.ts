@@ -69,6 +69,8 @@ export interface TestAssertion {
 
 
 export enum TestStatus {
+    Unknown = 'unknown',
+
     /** All tests passed. */
     Passed = 'passed',
 
