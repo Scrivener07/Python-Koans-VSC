@@ -34,6 +34,7 @@ export class TestFramework {
         // Execute the Python process.
         const processResult: ProcessResult = await Python.execute([
             '-m', moduleName,
+            "client",
             'identity', identity
         ], {
             cwd: fileDirectory,

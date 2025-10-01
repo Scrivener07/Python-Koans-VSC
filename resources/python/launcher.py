@@ -99,7 +99,7 @@ class Program:
         filepath:str = os.path.join(directory, "koans", "testing.py")
         try:
             specification:ModuleSpec|None = importlib.util.spec_from_file_location(
-                "koans.testing",
+                "koans.launcher",
                 filepath
             )
             module:ModuleType = importlib.util.module_from_spec(specification)

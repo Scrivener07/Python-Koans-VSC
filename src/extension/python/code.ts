@@ -26,12 +26,12 @@ export class Code {
         // Expect the standard output to have a single item.
         const result: string = processResult.output[0];
 
-        //
         let data: any;
         try {
             data = JSON.parse(result);
         } catch (error) {
-            KoanLog.error([Code, Code.getChallenges], 'Failed to parse JSON from Python output:', error);
+            // TODO: this is a bad way to read the errors array. This could throw even more exceptions.
+            KoanLog.error([Code, Code.getChallenges], 'Failed to parse JSON from Python output:', error, String(processResult.errors[0]));
             return [];
         }
 
