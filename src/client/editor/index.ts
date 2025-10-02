@@ -1,5 +1,5 @@
 import { createChallengeElement } from './challenge';
-import { WebCommands, WebMessage, DocumentInfo, Challenge, InitializeCommand } from '../../shared/messaging';
+import { WebCommands, WebMessage, InitializeCommand } from '../../shared/messaging';
 import { StatusIcon, TestAssertion, TestCase, TestStatus, TestSuite } from '../../shared/testing';
 
 
@@ -94,6 +94,7 @@ function onMessage_Initialize(data: InitializeCommand) {
             <ul>
                 <li><b>File:</b> ${data.documentInfo.fileName}</li>
                 <li><b>URI:</b> ${data.documentInfo.uri}</li>
+                <li><b>Encoding:</b> ${data.documentInfo.encoding}</li>
                 <li><b>Language:</b> ${data.documentInfo.language}</li>
                 <li><b>Lines:</b> ${data.documentInfo.lineCount}</li>
                 <li><b>Characters:</b> ${data.documentInfo.content.length}</li>
@@ -104,6 +105,7 @@ function onMessage_Initialize(data: InitializeCommand) {
             <ul>
                 <li><b>File:</b> ${data.pythonDocumentInfo.fileName}</li>
                 <li><b>URI:</b> ${data.pythonDocumentInfo.uri}</li>
+                <li><b>Encoding:</b> ${data.pythonDocumentInfo.encoding}</li>
                 <li><b>Language:</b> ${data.pythonDocumentInfo.language}</li>
                 <li><b>Lines:</b> ${data.pythonDocumentInfo.lineCount}</li>
                 <li><b>Characters:</b> ${data.pythonDocumentInfo.content.length}</li>
@@ -115,7 +117,7 @@ function onMessage_Initialize(data: InitializeCommand) {
             <p>This is the full text of the document being edited.</p>
             <textarea class="output-content">${data.documentInfo.content}</textarea>
         </details>
-    `;
+        `;
     }
 
     // Populate challenges.
@@ -232,6 +234,7 @@ function Code_Format(member_id: string): void {
     });
 }
 
+// OBSOLETE
 function Output_Clear(member_id: string): void {
     const outputElement = document.getElementById(`${member_id}_output`);
     if (outputElement) {
@@ -244,69 +247,89 @@ function Output_Clear(member_id: string): void {
     });
 }
 
+// Clears both results and standard output.
+function Results_Clear(member_id: string): void {
+    const resultsElement = document.getElementById(`${member_id}_results`);
+    if (resultsElement) {
+        resultsElement.innerHTML = '<div class="results-placeholder">Run tests to see results here...</div>';
+    }
+
+    const stdoutElement = document.getElementById(`${member_id}_stdout`);
+    if (stdoutElement) {
+        stdoutElement.innerHTML = '<div class="output-placeholder">No output from your code yet...</div>';
+    }
+
+    vscode.postMessage({
+        command: WebCommands.Output_Clear,
+        member_id: member_id
+    });
+}
+
+
 
 // Command Response Handlers
 //--------------------------------------------------
 
 function onMessage_OutputUpdate(suite: TestSuite): void {
-    if (!suite.cases) {
-        console.error('The testing suite had no test cases.');
-        return;
-    }
-
-    if (suite.cases.length !== 1) {
-        console.error(`The testing suite must have 1 test case, but had ${suite.cases.length}.`);
+    if (!suite.cases || suite.cases.length !== 1) {
+        console.error(`Invalid test suite data: ${suite.cases?.length || 0} cases`);
         return;
     }
 
     const testCase: TestCase = suite.cases[0];
+    const member_id: string = testCase.member_id;
 
-    const outputDiv: HTMLElement | null = document.getElementById(`${testCase.member_id}_output`);
-    if (!outputDiv) {
-        console.error('Could not get the test output element from DOM.');
+    // Get the result panel and standard output panel.
+    const resultsDiv = document.getElementById(`${member_id}_results`);
+    const stdoutDiv = document.getElementById(`${member_id}_stdout`);
+
+    if (!resultsDiv || !stdoutDiv) {
+        console.error('Could not find output elements in DOM');
         return;
     }
 
-    // Build complete HTML outside the loop.
-    let outputContent: string = '';
+    // Build test results content.
+    let resultsContent: string = '';
 
-    // Add test results.
-    outputContent += '<h4>Test Results:</h4>';
-    outputContent += `<div class="test-item">${testCase.message}</div>`;
+    // Add test status and message.
+    resultsContent += `<div class="test-item">${testCase.message}</div>`;
 
-    if (testCase.assertions) {
-        outputContent += '<h4>Case Assertions:</h4>';
-        for (let index = 0; index < testCase.assertions.length; index++) {
-            const assertion: TestAssertion = testCase.assertions[index];
-            outputContent += `<div class="test-item">${assertion.message}</div>`;
+    // Add assertions if available.
+    if (testCase.assertions && testCase.assertions.length > 0) {
+        resultsContent += '<h4>Assertions:</h4>';
+        for (const assertion of testCase.assertions) {
+            const assertClass = assertion.passed ? 'pass' : 'fail';
+            resultsContent += `<div class="assertion ${assertClass}">${assertion.message}</div>`;
         }
     }
 
-    // Add standard output
-    if (suite.output && suite.output.length > 0) {
-        outputContent += '<h4>Standard Output:</h4>';
-        for (let index = 0; index < suite.output.length; index++) {
-            // Convert to string explicitly.
-            const outputMessage: string = String(suite.output[index]);
-            outputContent += `<div class="output-item">${outputMessage}</div>`;
-        }
-    }
-
-    // Show fallback message if no content was generated.
-    if (!outputContent) {
-        outputContent = '<div class="output-empty">No output was generated.</div>';
-    }
-
-    // Create a container with appropriate styling based on success.
+    // Create results container.
     const resultClass = suite.status === TestStatus.Passed ? 'pass' : 'fail';
     const icon = suite.status === TestStatus.Passed ? StatusIcon.Passed : StatusIcon.Failed;
-    outputDiv.innerHTML = `<div class="test-result ${resultClass}">${icon} ${outputContent}</div>`;
+    resultsDiv.innerHTML = `<div class="test-result ${resultClass}">${icon} ${resultsContent}</div>`;
 
-    // Update status indicator.
-    const statusIndicator: Element | null = document.querySelector(`[data-challenge-id="${testCase.member_id}"] .challenge-status`);
+    // Build standard output content.
+    if (suite.output && suite.output.length > 0) {
+        let stdoutContent: string = '';
+        for (const output of suite.output) {
+            stdoutContent += `<div class="output-line">${String(output)}</div>`;
+        }
+        stdoutDiv.innerHTML = stdoutContent;
+
+        // Automatically expand output details if there's output.
+        const outputDetails = stdoutDiv.closest('details');
+        if (outputDetails) {
+            outputDetails.open = true;
+        }
+    } else {
+        stdoutDiv.innerHTML = '<div class="output-placeholder">No output from your code</div>';
+    }
+
+    // Update status indicator in the challenge list.
+    const statusIndicator = document.querySelector(`[data-challenge-id="${member_id}"] .challenge-status`);
     if (statusIndicator) {
         statusIndicator.textContent = icon;
-        statusIndicator.setAttribute('data-status', resultClass);
+        statusIndicator.setAttribute('data-status', resultClass.toLowerCase());
     }
 }
 
@@ -321,6 +344,8 @@ function onMessage_OutputUpdate(suite: TestSuite): void {
 (window as any).resetChallenge = Code_Reset;
 (window as any).formatCode = Code_Format;
 (window as any).clearOutput = Output_Clear;
+(window as any).clearResults = Results_Clear;
+
 
 // Main
 //--------------------------------------------------
