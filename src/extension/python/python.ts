@@ -217,7 +217,7 @@ export class PythonManager {
                 console.error(`Failed to kill process[${pid}]:`, error);
             }
         }
-        console.log(`All ${PythonManager.processes.size} tracked Python processes have been killed.`);
+        console.log(`All of ${PythonManager.processes.size} tracked Python processes have been killed.`);
         PythonManager.processes.clear();
     }
 

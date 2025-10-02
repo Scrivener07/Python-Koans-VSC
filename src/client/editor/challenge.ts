@@ -1,10 +1,7 @@
 import { vscode } from './vscode';
+import * as monaco from 'monaco-editor';
 import { Challenge, WebCommands } from "../../shared/messaging";
 import { StatusIcon, TestCase, TestStatus, TestSuite } from "../../shared/testing";
-
-// import * as monaco from 'monaco-editor';
-declare const monaco: any;
-
 
 /** Define a custom HTML element for challenges. */
 export class KoanChallengeElement extends HTMLElement {
@@ -15,7 +12,8 @@ export class KoanChallengeElement extends HTMLElement {
     private outputPanel: HTMLElement | null = null;
     private resultPanel: HTMLElement | null = null;
 
-    private _editorInstance: any = null; // Add this line
+    private editor: monaco.editor.IStandaloneCodeEditor | undefined;
+    private disposables: monaco.IDisposable[] = [];
 
 
     constructor() {
@@ -43,6 +41,9 @@ export class KoanChallengeElement extends HTMLElement {
         this.className = 'challenge-container';
         this.innerHTML = this.createTemplate();
 
+        // Initialize Monaco after DOM is ready.
+        setTimeout(() => this.initMonaco(), 0);
+
         // Cache references to frequently accessed elements.
         this.outputPanel = this.querySelector(`#${this._challenge.name}_stdout`);
         this.resultPanel = this.querySelector(`#${this._challenge.name}_results`);
@@ -57,74 +58,103 @@ export class KoanChallengeElement extends HTMLElement {
                 });
             });
         }
-
-        // Initialize Monaco if it's already ready
-        if (window.monacoIsReady) {
-            this.initializeMonacoEditor();
-        } else {
-            // Otherwise wait for the event
-            window.addEventListener('monaco-ready', () => {
-                this.initializeMonacoEditor();
-            }, { once: true });
-        }
     }
 
 
-    private initializeMonacoEditor(): void {
-        console.log(`Initializing Monaco for ${this._challenge.name}`);
+    // Monaco
+    //--------------------------------------------------
 
-        // Use setTimeout to ensure DOM is ready
-        setTimeout(() => {
-            const editorContainer = this.querySelector(`#${this._challenge.name}_editor`);
-            const codeElement = this.querySelector(`#${this._challenge.name}_code`);
+    // Initialize Monaco editor
+    private initMonaco(): void {
+        const editorContainer = this.querySelector(`#${this._challenge.name}_editor`) as HTMLElement;
+        if (!editorContainer) { return; }
 
-            if (!editorContainer || !codeElement || !window.monaco) {
-                console.error('Cannot initialize Monaco - missing required elements or Monaco');
-                return;
-            }
+        editorContainer.innerHTML = '';
 
-            try {
-                console.log('Creating Monaco editor instance');
-                const initialValue = codeElement.textContent || '';
+        // Get VS Code's current theme information.
+        const isDarkTheme = document.body.classList.contains('vscode-dark');
 
-                // Remove the placeholder element
-                codeElement.remove();
+        // Create Monaco editor.
+        this.editor = monaco.editor.create(editorContainer, {
+            value: this._challenge.code || '',
+            language: 'python',
+            theme: isDarkTheme ? 'vs-dark' : 'vs',
+            automaticLayout: true,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            lineNumbers: 'on',
+            scrollbar: {
+                vertical: 'auto',
+                horizontal: 'auto'
+            },
+            lineHeight: 18,
+            padding: { top: 8, bottom: 8 },
+            fontSize: 13,
+            renderLineHighlight: 'all',
+            tabSize: 4,
+            insertSpaces: true,
+            fontFamily: 'var(--vscode-editor-font-family)',
+            contextmenu: false
+        });
 
-                // Create editor with explicit container
-                const editor = window.monaco.editor.create(editorContainer, {
-                    value: initialValue,
-                    language: 'python',
-                    theme: 'vs-dark',
-                    automaticLayout: true,
-                    minimap: { enabled: false },
-                    scrollBeyondLastLine: false,
-                    lineNumbers: 'on',
-                    tabSize: 4,
-                    insertSpaces: true
+        // Listen for changes.
+        this.disposables.push(
+            this.editor.onDidChangeModelContent(() => {
+                if (!this.editor) { return; }
+                const code = this.editor.getValue();
+
+                // Use existing debounce mechanism.
+                vscode.postMessage({
+                    command: WebCommands.Code_Update,
+                    member_id: this._challenge.name,
+                    code: code
                 });
+            })
+        );
 
-                // Store the editor instance
-                this._editorInstance = editor;
-
-                // Add change handler
-                editor.onDidChangeModelContent(() => {
-                    const code = editor.getValue();
-                    const event = new CustomEvent('editor-change', {
-                        detail: {
-                            challengeId: this._challenge.name,
-                            code: code
-                        }
-                    });
-                    document.dispatchEvent(event);
-                });
-
-                console.log('Monaco editor initialized successfully');
-            } catch (e) {
-                console.error('Error initializing Monaco:', e);
-            }
-        }, 100); // Short delay to ensure DOM is ready
+        // Add listener for theme changes.
+        // window.addEventListener('message', this.handleThemeChange.bind(this));
     }
 
+    // private disposeMonaco(): void {
+    //     if (this.editor) {
+    //         this.editor.dispose();
+    //         this.editor = undefined;
+    //     }
+
+    //     this.disposables.forEach(item => item.dispose());
+    //     this.disposables = [];
+    // }
+
+    // private handleThemeChange(event: MessageEvent): void {
+    //     const message = event.data;
+    //     if (message.type === 'vscode-theme-changed') {
+    //         if (!this.editor) { return; }
+    //         const isDarkTheme = message.theme.includes('dark') || message.theme.includes('black');
+    //         monaco.editor.setTheme(isDarkTheme ? 'vs-dark' : 'vs');
+    //     }
+    // }
+
+    // private updateCode(code: string): void {
+    //     if (this.editor) {
+    //         this.editor.setValue(code);
+    //     }
+    // }
+
+    // private getCode(): string {
+    //     return this.editor ? this.editor.getValue() : '';
+    // }
+
+    // This is an override!
+    // private focus(): void {
+    //     if (this.editor) {
+    //         this.editor.focus();
+    //     }
+    // }
+
+
+    // Data
+    //--------------------------------------------------
 
     public update(suite: TestSuite): void {
         if (!suite.cases || suite.cases.length !== 1) {

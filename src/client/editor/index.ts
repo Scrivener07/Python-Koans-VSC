@@ -1,15 +1,25 @@
 import { vscode } from './vscode';
+import { setupMonacoWorkers } from './monaco-workers';
 import { KoanChallengeElement } from './challenge';
 import { WebCommands, WebMessage, InitializeCommand } from '../../shared/messaging';
 import { TestSuite } from '../../shared/testing';
 import { file_details_render } from './components/file-details';
 
+declare global {
+    interface Window {
+        monacoWorkerBasePath?: string;
+    }
+}
 
 // View
 //--------------------------------------------------
 
 function main() {
     console.log('index::constructor');
+
+    if (window.monacoWorkerBasePath) {
+        setupMonacoWorkers(window.monacoWorkerBasePath);
+    }
 
     // Register custom HTML elements.
     customElements.define('koan-challenge', KoanChallengeElement);

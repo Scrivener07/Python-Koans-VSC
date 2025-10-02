@@ -67,13 +67,12 @@ export class EditorModel implements vscode.Disposable {
     //--------------------------------------------------
 
     public async initialize(): Promise<void> {
-        const monacoPath: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'node_modules', 'monaco-editor');
         this.panel.webview.options = {
             enableScripts: true,
             localResourceRoots: [
                 this.rootWeb,
                 this.rootResource,
-                monacoPath
+                vscode.Uri.joinPath(this.extensionUri, 'node_modules', 'monaco-editor')
             ]
         };
 
@@ -231,8 +230,8 @@ export class EditorModel implements vscode.Disposable {
         const editor_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootResource, 'views', 'editor', 'editor.css'));
         const common_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootResource, 'views', 'koan.css'));
         const script_js = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootWeb, 'index.js'));
-        const monaco_path = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'node_modules', 'monaco-editor', 'min'));
-        const monaco_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'node_modules', 'monaco-editor', 'min', 'vs', 'editor', 'editor.main.css'));
+
+        const workerBaseUrl = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootWeb));
 
         return `
         <!DOCTYPE html>
@@ -243,7 +242,6 @@ export class EditorModel implements vscode.Disposable {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link rel="stylesheet" href="${common_css}">
             <link rel="stylesheet" href="${editor_css}">
-            <link href="${monaco_css}" rel="stylesheet" />
             <title>Python Koan Editor</title>
         </head>
 
@@ -262,33 +260,11 @@ export class EditorModel implements vscode.Disposable {
                 <p>Loading challenges from Python members...</p>
             </div>
 
-        <script>
-            // Global state to track when Monaco is ready
-            window.monacoIsReady = false;
-        </script>
+            <script>
+                window.monacoWorkerBasePath = "${workerBaseUrl}";
+            </script>
 
-        <!-- Load Monaco directly -->
-        <script src="${monaco_path}/vs/loader.js"></script>
-        <script>
-            // Setup AMD loader if you want to use AMD modules
-            require.config({ paths: { 'vs': '${monaco_path}/vs' }});
-
-            // Load Monaco editor modules
-            require(['vs/editor/editor.main'], function() {
-                // Set global flag when Monaco is ready
-                window.monacoIsReady = true;
-                window.monaco = monaco;
-
-                // Dispatch event that components can listen for
-                window.dispatchEvent(new Event('monaco-ready'));
-
-                // Now load your application script
-                const script = document.createElement('script');
-                script.src = "${script_js}";
-                document.body.appendChild(script);
-            });
-        </script>
-
+            <script type="module" src="${script_js}"></script>
         </body>
         </html>`;
     }
