@@ -32,7 +32,6 @@ export class KoanChallengeElement extends HTMLElement {
     }
 
 
-    /** Called when element is connected to the DOM. */
     public override connectedCallback(): void {
         this.setAttribute('data-challenge-id', this._challenge.name);
         this.className = 'challenge-container';
@@ -55,13 +54,11 @@ export class KoanChallengeElement extends HTMLElement {
     }
 
 
-
     public update(suite: TestSuite): void {
         if (!suite.cases || suite.cases.length !== 1) {
             console.error(`Invalid test suite data: ${suite.cases?.length || 0} cases`);
             return;
         }
-
 
         // Display only the first test case for now.
         const testCase: TestCase = suite.cases[0];

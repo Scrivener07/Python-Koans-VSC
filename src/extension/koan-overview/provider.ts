@@ -73,30 +73,28 @@ export class KoanWebViewProvider implements vscode.WebviewViewProvider {
 
     private getHtml(webview: vscode.Webview): string {
         // Get URIs for CSS and JS files.
-        const css_Uri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'koan.css')
-        );
-        const script_Uri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'viewer', 'webview.js')
-        );
+        const css_shared: vscode.Uri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'koan.css'));
+        const css_view: vscode.Uri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'viewer', 'viewer.css'));
+        const script: vscode.Uri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'resources', 'views', 'viewer', 'viewer.js'));
         return `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link rel="stylesheet" href="${css_Uri}">
+            <link rel="stylesheet" href="${css_shared}">
+            <link rel="stylesheet" href="${css_view}">
             <title>Python Koan Viewer</title>
         </head>
         <body>
             <h2>Viewer</h2>
             <p>This is the koan viewer.</p>
-            <div class="button-container-vertical">
+            <div class="item-container-vertical">
                 <button onclick="onClick_MyButton1('My Arg Value 1')">My Button 1</button>
                 <button onclick="onClick_MyButton2('My Arg Value 2')">My Button 2</button>
                 <button onclick="onClick_MyButton3('My Arg Value 3')">My Button 3</button>
             </div>
-            <script src="${script_Uri}"></script>
+            <script src="${script}"></script>
         </body>
         </html>
         `;

@@ -1,7 +1,8 @@
 import { vscode } from './vscode';
 import { KoanChallengeElement } from './challenge';
 import { WebCommands, WebMessage, InitializeCommand } from '../../shared/messaging';
-import { StatusIcon, TestCase, TestStatus, TestSuite } from '../../shared/testing';
+import { TestSuite } from '../../shared/testing';
+import { file_details_render } from './components/file-details';
 
 
 // View
@@ -48,66 +49,15 @@ function onMessage(event: MessageEvent<any>) {
 }
 
 
-// Document Details
+// Initialize
 //--------------------------------------------------
-
-function document_preview_raw() {
-    const textarea = document.querySelector('textarea');
-    if (textarea) {
-        textarea.addEventListener('input', () => {
-            // The text of the actual `*.koan` file json data.
-            vscode.postMessage({
-                command: WebCommands.Document_Update,
-                text: textarea.value
-            });
-        });
-    }
-}
-
-
-function updateCellPreview(member_id: string, content: string): void {
-    const preview = document.getElementById(`${member_id}_preview`);
-    if (preview) {
-        preview.innerHTML = `<pre><code>${content}</code></pre>`;
-    }
-}
-
 
 // New function to populate the UI with data.
 function onMessage_Initialize(data: InitializeCommand) {
     // Populate the document details.
     const detailsContainer = document.getElementById('document-details');
     if (detailsContainer) {
-        detailsContainer.innerHTML = `
-        <details>
-            <summary>Document</summary>
-            <ul>
-                <li><b>File:</b> ${data.documentInfo.fileName}</li>
-                <li><b>URI:</b> ${data.documentInfo.uri}</li>
-                <li><b>Encoding:</b> ${data.documentInfo.encoding}</li>
-                <li><b>Language:</b> ${data.documentInfo.language}</li>
-                <li><b>Lines:</b> ${data.documentInfo.lineCount}</li>
-                <li><b>Characters:</b> ${data.documentInfo.content.length}</li>
-            </ul>
-        </details>
-        <details>
-            <summary>Document: Exercise</summary>
-            <ul>
-                <li><b>File:</b> ${data.pythonDocumentInfo.fileName}</li>
-                <li><b>URI:</b> ${data.pythonDocumentInfo.uri}</li>
-                <li><b>Encoding:</b> ${data.pythonDocumentInfo.encoding}</li>
-                <li><b>Language:</b> ${data.pythonDocumentInfo.language}</li>
-                <li><b>Lines:</b> ${data.pythonDocumentInfo.lineCount}</li>
-                <li><b>Characters:</b> ${data.pythonDocumentInfo.content.length}</li>
-            </ul>
-        </details>
-
-        <details>
-            <summary>Document Source</summary>
-            <p>This is the full text of the document being edited.</p>
-            <textarea class="output-content">${data.documentInfo.content}</textarea>
-        </details>
-        `;
+        detailsContainer.innerHTML = file_details_render(data);
     }
 
 
@@ -266,10 +216,15 @@ function Results_Clear(member_id: string): void {
 
 function onMessage_OutputUpdate(suite: TestSuite): void {
     const member_id: string = suite.cases[0].member_id;
-    const challengeElement: KoanChallengeElement = document.querySelector(`koan-challenge[data-challenge-id="${member_id}"]`) as KoanChallengeElement;
+    const challengeElement: KoanChallengeElement|null = getChallenge(member_id);
     if (challengeElement) {
         challengeElement.update(suite);
     }
+}
+
+
+function getChallenge(member_id:string): KoanChallengeElement | null {
+    return document.querySelector(`koan-challenge[data-challenge-id="${member_id}"]`) as KoanChallengeElement;
 }
 
 
