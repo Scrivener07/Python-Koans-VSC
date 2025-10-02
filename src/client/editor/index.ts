@@ -1,26 +1,17 @@
-import { createChallengeElement } from './challenge';
+import { vscode } from './vscode';
+import { KoanChallengeElement } from './challenge';
 import { WebCommands, WebMessage, InitializeCommand } from '../../shared/messaging';
-import { StatusIcon, TestAssertion, TestCase, TestStatus, TestSuite } from '../../shared/testing';
-
-
-// VS Code API
-//--------------------------------------------------
-// Provide TypeScript types for the VS Code webview API.
-declare function acquireVsCodeApi(): {
-    postMessage(message: any): void;
-    getState(): any;
-    setState(state: any): void;
-};
-
-// Get the VS Code API instance.
-const vscode = acquireVsCodeApi();
+import { StatusIcon, TestCase, TestStatus, TestSuite } from '../../shared/testing';
 
 
 // View
 //--------------------------------------------------
 
 function main() {
-    console.log('WebView:constructor');
+    console.log('index::constructor');
+
+    // Register custom HTML elements.
+    customElements.define('koan-challenge', KoanChallengeElement);
 
     // Load templates when the page loads.
     document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
@@ -34,7 +25,7 @@ function main() {
 //--------------------------------------------------
 
 async function onDOMContentLoaded(event: Event) {
-    console.log('DOMContentLoaded...');
+    console.log('index::DOMContentLoaded');
 }
 
 
@@ -82,7 +73,6 @@ function updateCellPreview(member_id: string, content: string): void {
 }
 
 
-
 // New function to populate the UI with data.
 function onMessage_Initialize(data: InitializeCommand) {
     // Populate the document details.
@@ -120,19 +110,23 @@ function onMessage_Initialize(data: InitializeCommand) {
         `;
     }
 
-    // Populate challenges.
+
+    // Populate the challenges container.
     const challengesContainer = document.getElementById('challenges-container');
     if (challengesContainer) {
         // Clear existing content.
         challengesContainer.innerHTML = '';
 
-        // Add each challenge.
+        // Add each challenge using the custom element.
         data.challenges.forEach(challenge => {
-            const challengeElement = createChallengeElement(challenge);
+            const challengeElement = document.createElement('koan-challenge') as KoanChallengeElement;
+            challengeElement.challenge = challenge;
             challengesContainer.appendChild(challengeElement);
         });
     }
 
+
+    // TODO: This might be too naive of a way to grab this text area.
     // Set up event listener for the textarea.
     const textarea = document.querySelector('textarea');
     if (textarea) {
@@ -271,65 +265,10 @@ function Results_Clear(member_id: string): void {
 //--------------------------------------------------
 
 function onMessage_OutputUpdate(suite: TestSuite): void {
-    if (!suite.cases || suite.cases.length !== 1) {
-        console.error(`Invalid test suite data: ${suite.cases?.length || 0} cases`);
-        return;
-    }
-
-    const testCase: TestCase = suite.cases[0];
-    const member_id: string = testCase.member_id;
-
-    // Get the result panel and standard output panel.
-    const resultsDiv = document.getElementById(`${member_id}_results`);
-    const stdoutDiv = document.getElementById(`${member_id}_stdout`);
-
-    if (!resultsDiv || !stdoutDiv) {
-        console.error('Could not find output elements in DOM');
-        return;
-    }
-
-    // Build test results content.
-    let resultsContent: string = '';
-
-    // Add test status and message.
-    resultsContent += `<div class="test-item">${testCase.message}</div>`;
-
-    // Add assertions if available.
-    if (testCase.assertions && testCase.assertions.length > 0) {
-        resultsContent += '<h4>Assertions:</h4>';
-        for (const assertion of testCase.assertions) {
-            const assertClass = assertion.passed ? 'pass' : 'fail';
-            resultsContent += `<div class="assertion ${assertClass}">${assertion.message}</div>`;
-        }
-    }
-
-    // Create results container.
-    const resultClass = suite.status === TestStatus.Passed ? 'pass' : 'fail';
-    const icon = suite.status === TestStatus.Passed ? StatusIcon.Passed : StatusIcon.Failed;
-    resultsDiv.innerHTML = `<div class="test-result ${resultClass}">${icon} ${resultsContent}</div>`;
-
-    // Build standard output content.
-    if (suite.output && suite.output.length > 0) {
-        let stdoutContent: string = '';
-        for (const output of suite.output) {
-            stdoutContent += `<div class="output-line">${String(output)}</div>`;
-        }
-        stdoutDiv.innerHTML = stdoutContent;
-
-        // Automatically expand output details if there's output.
-        const outputDetails = stdoutDiv.closest('details');
-        if (outputDetails) {
-            outputDetails.open = true;
-        }
-    } else {
-        stdoutDiv.innerHTML = '<div class="output-placeholder">No output from your code</div>';
-    }
-
-    // Update status indicator in the challenge list.
-    const statusIndicator = document.querySelector(`[data-challenge-id="${member_id}"] .challenge-status`);
-    if (statusIndicator) {
-        statusIndicator.textContent = icon;
-        statusIndicator.setAttribute('data-status', resultClass.toLowerCase());
+    const member_id: string = suite.cases[0].member_id;
+    const challengeElement: KoanChallengeElement = document.querySelector(`koan-challenge[data-challenge-id="${member_id}"]`) as KoanChallengeElement;
+    if (challengeElement) {
+        challengeElement.update(suite);
     }
 }
 
