@@ -288,3 +288,25 @@ koan-challenge .output-content,
 koan-challenge .instructions-content {
     padding: 0.75rem;
 }
+
+
+/* Monaco
+--------------------------------------------------
+*/
+
+.challenge-code-section {
+    margin-bottom: 16px;
+}
+
+.code-editor {
+    height: 200px;
+    border: 1px solid var(--vscode-panel-border);
+    margin-top: 8px;
+}
+
+.monaco-container {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}

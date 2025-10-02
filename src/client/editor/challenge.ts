@@ -2,6 +2,10 @@ import { vscode } from './vscode';
 import { Challenge, WebCommands } from "../../shared/messaging";
 import { StatusIcon, TestCase, TestStatus, TestSuite } from "../../shared/testing";
 
+// import * as monaco from 'monaco-editor';
+declare const monaco: any;
+
+
 /** Define a custom HTML element for challenges. */
 export class KoanChallengeElement extends HTMLElement {
 
@@ -10,6 +14,8 @@ export class KoanChallengeElement extends HTMLElement {
 
     private outputPanel: HTMLElement | null = null;
     private resultPanel: HTMLElement | null = null;
+
+    private _editorInstance: any = null; // Add this line
 
 
     constructor() {
@@ -51,6 +57,72 @@ export class KoanChallengeElement extends HTMLElement {
                 });
             });
         }
+
+        // Initialize Monaco if it's already ready
+        if (window.monacoIsReady) {
+            this.initializeMonacoEditor();
+        } else {
+            // Otherwise wait for the event
+            window.addEventListener('monaco-ready', () => {
+                this.initializeMonacoEditor();
+            }, { once: true });
+        }
+    }
+
+
+    private initializeMonacoEditor(): void {
+        console.log(`Initializing Monaco for ${this._challenge.name}`);
+
+        // Use setTimeout to ensure DOM is ready
+        setTimeout(() => {
+            const editorContainer = this.querySelector(`#${this._challenge.name}_editor`);
+            const codeElement = this.querySelector(`#${this._challenge.name}_code`);
+
+            if (!editorContainer || !codeElement || !window.monaco) {
+                console.error('Cannot initialize Monaco - missing required elements or Monaco');
+                return;
+            }
+
+            try {
+                console.log('Creating Monaco editor instance');
+                const initialValue = codeElement.textContent || '';
+
+                // Remove the placeholder element
+                codeElement.remove();
+
+                // Create editor with explicit container
+                const editor = window.monaco.editor.create(editorContainer, {
+                    value: initialValue,
+                    language: 'python',
+                    theme: 'vs-dark',
+                    automaticLayout: true,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    lineNumbers: 'on',
+                    tabSize: 4,
+                    insertSpaces: true
+                });
+
+                // Store the editor instance
+                this._editorInstance = editor;
+
+                // Add change handler
+                editor.onDidChangeModelContent(() => {
+                    const code = editor.getValue();
+                    const event = new CustomEvent('editor-change', {
+                        detail: {
+                            challengeId: this._challenge.name,
+                            code: code
+                        }
+                    });
+                    document.dispatchEvent(event);
+                });
+
+                console.log('Monaco editor initialized successfully');
+            } catch (e) {
+                console.error('Error initializing Monaco:', e);
+            }
+        }, 100); // Short delay to ensure DOM is ready
     }
 
 
@@ -109,7 +181,6 @@ export class KoanChallengeElement extends HTMLElement {
     }
 
 
-
     // Render
     //--------------------------------------------------
 
@@ -166,7 +237,6 @@ export class KoanChallengeElement extends HTMLElement {
     private code(): string {
         return `
         <div class="challenge-code-section">
-
             <div class="code-header">
                 <span class="code-label">Your Solution</span>
                 <div class="code-actions">
@@ -178,16 +248,9 @@ export class KoanChallengeElement extends HTMLElement {
                     </button>
                 </div>
             </div>
-
             <div class="code-editor" id="${this.challenge.name}_editor">
-                <textarea
-                    id="${this.challenge.name}_code"
-                    class="code-input"
-                    placeholder="# Write your solution here..."
-                    spellcheck="false"
-                >${this.challenge.code}</textarea>
+                <pre id="${this.challenge.name}_code">${this.challenge.code}</pre>
             </div>
-
         </div>
         `;
     }

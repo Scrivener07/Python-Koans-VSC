@@ -8,6 +8,9 @@ const path = require('path');
 /** Runs TypeScript type checking in a separate process for faster builds. */
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 
+/** Webpack plugin to optimize and bundle the Monaco Editor. */
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+
 
 // Shared Configuration Template
 //--------------------------------------------------
@@ -115,15 +118,17 @@ module.exports = (env, argv) => [
         output: {
             path: path.resolve(__dirname, './out/client/editor'),
             filename: '[name].js',
-            library: {
-                type: 'module'
-            }
+            // library: {
+            //     type: 'module'
+            // }
+            libraryTarget: 'window'
         },
-        experiments: {
-            outputModule: true
-        },
+        // experiments: {
+        //     outputModule: true
+        // },
         externals: {
-            vscode: 'commonjs vscode'
+            vscode: 'commonjs vscode',
+            'monaco-editor': 'monaco'
         },
         resolve: {
             extensions: ['.ts', '.js']
@@ -138,7 +143,11 @@ module.exports = (env, argv) => [
             ]
         },
         plugins: [
-            new ForkTsCheckerWebpackPlugin()
+            new ForkTsCheckerWebpackPlugin(),
+            new MonacoWebpackPlugin({
+                features: ['!gotoSymbol'],
+                languages: ['python']
+            })
         ]
     }
 ];

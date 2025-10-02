@@ -97,20 +97,29 @@ function onMessage_Initialize(data: InitializeCommand) {
 
 /** Apply input handlers to every code text area. */
 function applyInputHandlers() {
-    document.querySelectorAll('.code-input').forEach((editor) => {
-        editor.addEventListener('input', (event) => {
-            const target = event.target as HTMLTextAreaElement;
-            const challengeDiv = target.closest('[data-challenge-id]');
-            if (!challengeDiv) {
-                return;
-            }
-            const challengeId = challengeDiv.getAttribute('data-challenge-id');
-            if (challengeId) {
-                // Use the debounced handler instead of direct message sending.
-                handleCodeEditorChange(challengeId, target.value);
-            }
-        });
+    // document.querySelectorAll('.code-input').forEach((editor) => {
+    //     editor.addEventListener('input', (event) => {
+    //         const target = event.target as HTMLTextAreaElement;
+    //         const challengeDiv = target.closest('[data-challenge-id]');
+    //         if (!challengeDiv) {
+    //             return;
+    //         }
+    //         const challengeId = challengeDiv.getAttribute('data-challenge-id');
+    //         if (challengeId) {
+    //             // Use the debounced handler instead of direct message sending.
+    //             handleCodeEditorChange(challengeId, target.value);
+    //         }
+    //     });
+    // });
+
+
+    document.addEventListener('editor-change', (event: Event) => {
+        const customEvent = event as CustomEvent;
+        if (customEvent.detail) {
+            handleCodeEditorChange(customEvent.detail.challengeId, customEvent.detail.code);
+        }
     });
+
 }
 
 
