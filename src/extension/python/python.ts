@@ -76,7 +76,7 @@ export class Python {
             environment[Python.PATH] = options.pythonPath;
         }
 
-        return spawn(Python.Executable, args, {
+        const spawned = spawn(Python.Executable, args, {
             cwd: options.cwd,
             env: environment,
             // stdin@0, stdout@1, stderr@2, fd_json@3
@@ -84,6 +84,16 @@ export class Python {
                 ['pipe', 'pipe', 'pipe', 'pipe'] :  // With JSON pipe
                 ['pipe', 'pipe', 'pipe']            // Standard pipes only
         });
+
+        if (!PythonManager.track(spawned)) {
+            if (spawned.kill()) {
+                console.error("Failed to track Python process. The spawned process was killed.");
+            } else {
+                console.error("Failed to track Python process. The spawned process could not be killed.");
+            }
+        }
+
+        return spawned;
     }
 
 
@@ -181,5 +191,34 @@ export class Python {
         return Python.execute(['-h']);
     }
 
+
+}
+
+
+export class PythonManager {
+    private static processes: Map<number, ChildProcessWithoutNullStreams> = new Map();
+
+
+    public static track(process: ChildProcessWithoutNullStreams): boolean {
+        if (process.pid) {
+            PythonManager.processes.set(process.pid, process);
+            process.on(ProcessEvents.Exit, () => PythonManager.processes.delete(process.pid!));
+            return true;
+        }
+        return false;
+    }
+
+
+    public static dispose(): void {
+        for (const [pid, process] of PythonManager.processes) {
+            try {
+                process.kill();
+            } catch (error) {
+                console.error(`Failed to kill process[${pid}]:`, error);
+            }
+        }
+        console.log(`All ${PythonManager.processes.size} tracked Python processes have been killed.`);
+        PythonManager.processes.clear();
+    }
 
 }

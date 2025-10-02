@@ -7,6 +7,7 @@ import { KoanPanel } from './koan-overview/provider';
 import { KoanNotebook } from './notebook/notebook';
 import { KoanNotebookSerializer } from './notebook/serializer';
 import { KoanNotebookKernel } from './notebook/kernel';
+import { PythonManager } from './python/python';
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -25,5 +26,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 
 export function deactivate() {
+    PythonManager.dispose();
     KoanLog.info([deactivate], 'Extension has deactivated.');
 }
