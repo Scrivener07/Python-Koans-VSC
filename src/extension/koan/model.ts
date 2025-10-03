@@ -230,9 +230,7 @@ export class EditorModel implements vscode.Disposable {
         const editor_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootResource, 'views', 'editor', 'editor.css'));
         const common_css = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootResource, 'views', 'koan.css'));
         const script_js = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootWeb, 'index.js'));
-
         const workerBaseUrl = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.rootWeb));
-
         return `
         <!DOCTYPE html>
         <html lang="en">

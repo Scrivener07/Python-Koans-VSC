@@ -1,6 +1,6 @@
 // Imports
 //--------------------------------------------------
-require('webpack');
+const webpack = require('webpack');
 
 /** Core Node.js module for handling file paths. */
 const path = require('path');
@@ -151,12 +151,9 @@ module.exports = (env, argv) => [
         plugins: [
             new ForkTsCheckerWebpackPlugin(),
             new MonacoWebpackPlugin({
-                languages: ['python'],
-                filename: '[name].worker.js',
-                workers: {
-                    workerLoader: 'async'
-                }
+                languages: ['python']
             })
-        ]
+        ],
+
     }
 ];

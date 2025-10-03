@@ -1,5 +1,5 @@
 import { vscode } from './vscode';
-import { setupMonacoWorkers } from './monaco-workers';
+import { setupMonacoWorkers } from './monaco';
 import { KoanChallengeElement } from './challenge';
 import { WebCommands, WebMessage, InitializeCommand } from '../../shared/messaging';
 import { TestSuite } from '../../shared/testing';
@@ -27,6 +27,8 @@ function main() {
     // Load templates when the page loads.
     document.addEventListener('DOMContentLoaded', onDOMContentLoaded);
 
+    window.addEventListener('load', onWindowLoad);
+
     // Message handling from extension.
     window.addEventListener('message', onMessage);
 }
@@ -36,12 +38,17 @@ function main() {
 //--------------------------------------------------
 
 async function onDOMContentLoaded(event: Event) {
-    console.log('index::DOMContentLoaded');
+    console.log('dom::DOMContentLoaded');
 }
 
 
 // Browser Window
 //--------------------------------------------------
+
+function onWindowLoad(event:Event) {
+    console.log('window::load');
+}
+
 
 function onMessage(event: MessageEvent<any>) {
     console.log('Message received from extension:', event.data);

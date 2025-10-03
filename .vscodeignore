@@ -11,3 +11,5 @@ vsc-extension-quickstart.md
 **/*.ts
 **/*.tsbuildinfo
 **/.vscode-test.*
+example/**
+README.DEVELOPER.md
