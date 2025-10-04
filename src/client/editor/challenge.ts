@@ -1,4 +1,4 @@
-import { vscode } from './vscode';
+import { vscode } from './services/vscode';
 import * as monaco from 'monaco-editor';
 import { Challenge, WebCommands } from "../../shared/messaging";
 import { StatusIcon, TestCase, TestStatus, TestSuite } from "../../shared/testing";
@@ -66,7 +66,7 @@ export class KoanChallengeElement extends HTMLElement {
 
     // Initialize Monaco editor
     private initMonaco(): void {
-        const editorContainer = this.querySelector(`#${this._challenge.name}_editor`) as HTMLElement;
+        const editorContainer = this.querySelector<HTMLElement>(`#${this._challenge.name}_editor`);
         if (!editorContainer) { return; }
 
         editorContainer.innerHTML = '';

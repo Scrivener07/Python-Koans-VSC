@@ -13,6 +13,7 @@ export type WebMessage =
  */
 export enum WebCommands {
     Data_Initialize = 'initialize',
+    Data_Ready = 'ready',
     Document_Update = 'update',
     Code_OpenVirtual = 'code-open-virtual',
     Code_RunTests = 'code-run',

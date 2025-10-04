@@ -1,0 +1,255 @@
+import { vscode } from './services/vscode';
+import { KoanChallengeElement } from './challenge';
+import { WebCommands, WebMessage, InitializeCommand } from '../../shared/messaging';
+import { TestSuite } from '../../shared/testing';
+import { file_details_render } from './components/file-details';
+
+
+export class App {
+    constructor() {
+        console.log('app::constructor');
+
+        // Register custom HTML elements.
+        customElements.define('koan-challenge', KoanChallengeElement);
+        window.addEventListener('load', (event) => this.onWindowLoad(event));
+        document.addEventListener('DOMContentLoaded', (event) => this.onDOMContentLoaded(event));
+        window.addEventListener('message', (event) => this.onMessage(event));
+    }
+
+
+    public start(): void {
+        console.log('app::start');
+    }
+
+
+    // Browser
+    //--------------------------------------------------
+
+    private async onDOMContentLoaded(event: Event): Promise<void> {
+        console.log('app:dom::DOMContentLoaded');
+    }
+
+
+    private onWindowLoad(event: Event): void {
+        console.log('app:window::load');
+    }
+
+
+    // Messaging
+    //--------------------------------------------------
+
+    private onMessage(event: MessageEvent<any>): void {
+        console.log('Message received from extension:', event.data);
+        const message = event.data as WebMessage;
+        switch (message.command) {
+            case WebCommands.Data_Initialize:
+                this.onMessage_Initialize(message);
+                break;
+            case WebCommands.Output_Update:
+                this.onMessage_OutputUpdate(message.suite);
+                break;
+            default:
+                console.log('Unknown message from extension:', message);
+        }
+    }
+
+
+    // Initialize
+    //--------------------------------------------------
+
+    // New function to populate the UI with data.
+    private onMessage_Initialize(data: InitializeCommand): void {
+
+        // Populate the document details.
+        const detailsContainer = document.getElementById('document-details');
+        if (detailsContainer) {
+            detailsContainer.innerHTML = file_details_render(data);
+        }
+
+        // Populate the challenges container.
+        const challengesContainer = document.getElementById('challenges-container');
+        if (challengesContainer) {
+            // Clear existing content.
+            challengesContainer.innerHTML = '';
+
+            // Add each challenge using the custom element.
+            data.challenges.forEach(challenge => {
+                const challengeElement: KoanChallengeElement = document.createElement('koan-challenge') as KoanChallengeElement;
+                challengeElement.challenge = challenge;
+                challengesContainer.appendChild(challengeElement);
+            });
+        }
+
+        // TODO: This might be too naive of a way to grab this text area.
+        // Set up event listener for the textarea.
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+            textarea.addEventListener('input', () => {
+                vscode.postMessage({
+                    command: WebCommands.Document_Update,
+                    text: textarea.value
+                });
+            });
+        }
+        this.setup_global_handlers();
+        this.applyInputHandlers();
+    }
+
+
+    private setup_global_handlers(): void {
+        const win: any = window as any;
+        win.runChallenge = this.Code_RunTest;
+        win.openCodeCell = this.Code_OpenVirtual;
+        win.toggleChallenge = this.onClick_InstructionToggle;
+        win.resetChallenge = this.Code_Reset;
+        win.formatCode = this.Code_Format;
+        win.clearOutput = this.Output_Clear;
+        win.clearResults = this.Results_Clear;
+    }
+
+
+    // Input
+    //--------------------------------------------------
+
+    /** Apply input handlers to every code text area. */
+    private applyInputHandlers(): void {
+        // document.querySelectorAll('.code-input').forEach((editor) => {
+        //     editor.addEventListener('input', (event) => {
+        //         const target = event.target as HTMLTextAreaElement;
+        //         const challengeDiv = target.closest('[data-challenge-id]');
+        //         if (!challengeDiv) {
+        //             return;
+        //         }
+        //         const challengeId = challengeDiv.getAttribute('data-challenge-id');
+        //         if (challengeId) {
+        //             // Use the debounced handler instead of direct message sending.
+        //             handleCodeEditorChange(challengeId, target.value);
+        //         }
+        //     });
+        // });
+
+
+        document.addEventListener('editor-change', (event: Event) => {
+            const customEvent = event as CustomEvent;
+            if (customEvent.detail) {
+                this.handleCodeEditorChange(customEvent.detail.challengeId, customEvent.detail.code);
+            }
+        });
+
+    }
+
+
+    // Debounce Input
+    //--------------------------------------------------
+
+    /** The input debounce timer to use. */
+    private updateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    /** The input debouce handler to use. */
+    private handleCodeEditorChange(challengeId: string, newCode: string): void {
+        // Clear previous timeout.
+        if (this.updateTimeout) {
+            clearTimeout(this.updateTimeout);
+        }
+        // Set new timeout (ms delay).
+        const delay: number = 1000;
+        this.updateTimeout = setTimeout(() => {
+            vscode.postMessage({
+                command: WebCommands.Code_Update,
+                member_id: challengeId,
+                code: newCode
+            });
+        }, delay);
+    }
+
+
+    // Button Handlers
+    //--------------------------------------------------
+
+    // Challenge Functions
+    private Code_RunTest(member_id: string): void {
+        vscode.postMessage({
+            command: WebCommands.Code_RunTests,
+            member_id: member_id
+        });
+    }
+
+    private Code_OpenVirtual(member_id: string): void {
+        vscode.postMessage({
+            command: WebCommands.Code_OpenVirtual,
+            member_id: member_id
+        });
+    }
+
+    private onClick_InstructionToggle(challenge_id: string): void {
+        const instructionsElem = document.getElementById(`${challenge_id}_instructions`);
+        if (instructionsElem) {
+            instructionsElem.classList.toggle('expanded');
+        }
+    }
+
+    private Code_Reset(member_id: string): void {
+        vscode.postMessage({
+            command: WebCommands.Code_Reset,
+            member_id: member_id
+        });
+    }
+
+    private Code_Format(member_id: string): void {
+        vscode.postMessage({
+            command: WebCommands.Code_Format,
+            member_id: member_id
+        });
+    }
+
+    // OBSOLETE
+    private Output_Clear(member_id: string): void {
+        const outputElement = document.getElementById(`${member_id}_output`);
+        if (outputElement) {
+            outputElement.innerHTML = '<div class="output-placeholder">Run tests to see results here...</div>';
+        }
+
+        vscode.postMessage({
+            command: WebCommands.Output_Clear,
+            member_id: member_id
+        });
+    }
+
+    // Clears both results and standard output.
+    private Results_Clear(member_id: string): void {
+        const resultsElement = document.getElementById(`${member_id}_results`);
+        if (resultsElement) {
+            resultsElement.innerHTML = '<div class="results-placeholder">Run tests to see results here...</div>';
+        }
+
+        const stdoutElement = document.getElementById(`${member_id}_stdout`);
+        if (stdoutElement) {
+            stdoutElement.innerHTML = '<div class="output-placeholder">No output from your code yet...</div>';
+        }
+
+        vscode.postMessage({
+            command: WebCommands.Output_Clear,
+            member_id: member_id
+        });
+    }
+
+
+
+    // Command Response Handlers
+    //--------------------------------------------------
+
+    private onMessage_OutputUpdate(suite: TestSuite): void {
+        const member_id: string = suite.cases[0].member_id;
+        const challengeElement: KoanChallengeElement | null = this.getChallenge(member_id);
+        if (challengeElement) {
+            challengeElement.update(suite);
+        }
+    }
+
+
+    private getChallenge(member_id: string): KoanChallengeElement | null {
+        return document.querySelector(`koan-challenge[data-challenge-id="${member_id}"]`) as KoanChallengeElement;
+    }
+
+
+}

@@ -1,4 +1,4 @@
-import { vscode } from "../vscode";
+import { vscode } from "../services/vscode";
 import { InitializeCommand, WebCommands } from "../../../shared/messaging";
 
 

@@ -71,144 +71,12 @@ export class EditorModel implements vscode.Disposable {
             enableScripts: true,
             localResourceRoots: [
                 this.rootWeb,
-                this.rootResource,
-                vscode.Uri.joinPath(this.extensionUri, 'node_modules', 'monaco-editor')
+                this.rootResource
             ]
         };
 
         // Set the webview's initial HTML content.
         await this.render();
-
-        // Parse the koan JSON manifest.
-        try {
-            this.read();
-        } catch (error) {
-            console.error('Failed to read koan manifest:', error);
-            return;
-        }
-
-        const documentInfo: DocumentInfo = {
-            fileName: this.document.fileName,
-            uri: this.document.uri.path,
-            language: this.document.languageId,
-            lineCount: this.document.lineCount,
-            encoding: this.document.encoding,
-            content: this.document.getText()
-        };
-
-
-        // Get the backing Python file specified in the manifest.
-        let exerciseDocument: vscode.TextDocument;
-        try {
-            exerciseDocument = await this.get_exercise_document(this.manifest);
-        } catch (error) {
-            console.error('Failed to get Python document:', error);
-            return;
-        }
-        const exerciseDocumentInfo: DocumentInfo = {
-            fileName: exerciseDocument.fileName,
-            uri: exerciseDocument.uri.path,
-            language: exerciseDocument.languageId,
-            lineCount: exerciseDocument.lineCount,
-            encoding: exerciseDocument.encoding,
-            content: exerciseDocument.getText()
-        };
-
-        // Get the challenge data parsed from Python source code.
-        let challenges: ChallengeData[];
-        try {
-            challenges = await this.getChallenges(exerciseDocument.uri);
-        } catch (error) {
-            console.error('Failed to parse Python file:', error);
-            return;
-        }
-
-        // Pack the values into a web message.
-        const message: InitializeCommand = {
-            command: WebCommands.Data_Initialize,
-            documentInfo: documentInfo,
-            pythonDocumentInfo: exerciseDocumentInfo,
-            challenges: challenges
-        };
-
-        this.panel.webview.postMessage(message);
-    }
-
-
-    // Data
-    //--------------------------------------------------
-
-    /** Parses challenge data from the subject exercise Python file. */
-    private async getChallenges(pythonFileUri: vscode.Uri): Promise<ChallengeData[]> {
-        KoanLog.info([EditorModel, this.getChallenges], pythonFileUri.toString());
-        const scriptPath: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Code.PYTHON_FILE);
-        return await Code.getChallenges(scriptPath, pythonFileUri);
-    }
-
-
-    // Document
-    //--------------------------------------------------
-
-    /**
-     * Handle koan manifest document changes by updating the web view.
-     * @param e An event describing a transactional document change.
-     *
-     * Note: This is invoked by the *provider* for this custom-editor.
-     */
-    public onTextDocumentChanged(e: vscode.TextDocumentChangeEvent): void {
-        this.read();
-        this.render();
-    }
-
-
-    /** Parse the koan JSON manifest document. */
-    private read(): void {
-        const text: string = this.document.getText();
-        try {
-            this.manifest = Manifest.decode(text);
-        }
-        catch (error: unknown) {
-            let errorMessage: string;
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            } else {
-                errorMessage = String(error);
-            }
-            throw new Error(`Failed to decode manifest document: ${this.document.uri}\n  - ${errorMessage}`);
-        }
-    }
-
-
-    // Data
-    //--------------------------------------------------
-
-    private async get_exercise_document(manifest: Manifest): Promise<vscode.TextDocument> {
-        // Resolve the Python exercise file path, relative to the koan file.
-        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
-        const exercise_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.exercise);
-
-        // Load the Python file as a VS Code document object.
-        return await vscode.workspace.openTextDocument(exercise_uri);
-    }
-
-
-    private async get_test_document(manifest: Manifest): Promise<vscode.TextDocument> {
-        // Resolve the Python exercise file path, relative to the koan file.
-        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
-        const test_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.test);
-
-        // Load the Python file as a VS Code document object.
-        return await vscode.workspace.openTextDocument(test_uri);
-    }
-
-
-    private async get_solution_document(manifest: Manifest): Promise<vscode.TextDocument> {
-        // Resolve the Python exercise file path, relative to the koan file.
-        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
-        const solution_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.solution);
-
-        // Load the Python file as a VS Code document object.
-        return await vscode.workspace.openTextDocument(solution_uri);
     }
 
 
@@ -216,7 +84,7 @@ export class EditorModel implements vscode.Disposable {
     //--------------------------------------------------
 
     private async render(): Promise<void> {
-        const html = this.render_index();
+        const html: string = this.render_index();
         this.panel.webview.html = html;
     }
 
@@ -268,25 +136,122 @@ export class EditorModel implements vscode.Disposable {
     }
 
 
-    private render_error(html_uri: vscode.Uri, error: any): string {
-        return `
-        <!DOCTYPE html>
-        <html lang="en">
+    // Data
+    //--------------------------------------------------
 
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Error</title>
-        </head>
+    private async handle_ready() {
+        // Prepare the initialization data.
+        const message: InitializeCommand = await this.getData();
+        this.panel.webview.postMessage(message);
+    }
 
-        <body>
-            <p>The view had an error.</p>
-            <p>${html_uri}</p>
-            <pre>${error}</pre>
-        </body>
 
-        </html>
-        `;
+    private async getData(): Promise<InitializeCommand> {
+        // Parse the koan JSON manifest.
+        this.read();
+        const documentInfo: DocumentInfo = EditorModel.toDocumentInfo(this.document);
+
+        // Get the backing Python file specified in the manifest.
+        let exerciseDocument: vscode.TextDocument;
+        exerciseDocument = await this.get_exercise_document(this.manifest);
+
+        const exerciseDocumentInfo: DocumentInfo = EditorModel.toDocumentInfo(exerciseDocument);
+
+        // Get the challenge data parsed from Python source code.
+        let challenges: ChallengeData[];
+        challenges = await this.getChallenges(exerciseDocument.uri);
+
+        // Pack the values into a web message.
+        const message: InitializeCommand = {
+            command: WebCommands.Data_Initialize,
+            documentInfo: documentInfo,
+            pythonDocumentInfo: exerciseDocumentInfo,
+            challenges: challenges
+        };
+        return message;
+    }
+
+
+    private static toDocumentInfo(document: vscode.TextDocument): DocumentInfo {
+        return {
+            fileName: document.fileName,
+            uri: document.uri.path,
+            language: document.languageId,
+            lineCount: document.lineCount,
+            encoding: document.encoding,
+            content: document.getText()
+        };
+    }
+
+
+    /** Parses challenge data from the subject exercise Python file. */
+    private async getChallenges(pythonFileUri: vscode.Uri): Promise<ChallengeData[]> {
+        KoanLog.info([EditorModel, this.getChallenges], pythonFileUri.toString());
+        const scriptPath: vscode.Uri = vscode.Uri.joinPath(this.extensionUri, 'resources', 'python', Code.PYTHON_FILE);
+        return await Code.getChallenges(scriptPath, pythonFileUri);
+    }
+
+
+    // Document
+    //--------------------------------------------------
+
+    /**
+     * Handle koan manifest document changes by updating the web view.
+     * @param e An event describing a transactional document change.
+     *
+     * Note: This is invoked by the *provider* for this custom-editor.
+     */
+    public onTextDocumentChanged(e: vscode.TextDocumentChangeEvent): void {
+        this.read();
+        this.render();
+    }
+
+
+    /** Parse the koan JSON manifest document. */
+    private read(): void {
+        const text: string = this.document.getText();
+        try {
+            this.manifest = Manifest.decode(text);
+        }
+        catch (error: unknown) {
+            let errorMessage: string;
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            } else {
+                errorMessage = String(error);
+            }
+            throw new Error(`Failed to decode manifest document: ${this.document.uri}\n  - ${errorMessage}`);
+        }
+    }
+
+
+    private async get_exercise_document(manifest: Manifest): Promise<vscode.TextDocument> {
+        // Resolve the Python exercise file path, relative to the koan file.
+        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
+        const exercise_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.exercise);
+
+        // Load the Python file as a VS Code document object.
+        return await vscode.workspace.openTextDocument(exercise_uri);
+    }
+
+
+    private async get_test_document(manifest: Manifest): Promise<vscode.TextDocument> {
+        // Resolve the Python exercise file path, relative to the koan file.
+        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
+        const test_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.test);
+
+        // Load the Python file as a VS Code document object.
+        return await vscode.workspace.openTextDocument(test_uri);
+    }
+
+
+    private async get_solution_document(manifest: Manifest): Promise<vscode.TextDocument> {
+        // Resolve the Python exercise file path, relative to the koan file.
+        const directory: vscode.Uri = vscode.Uri.joinPath(this.document.uri, '..');
+        const solution_uri: vscode.Uri = vscode.Uri.joinPath(directory, manifest.solution);
+
+        // Load the Python file as a VS Code document object.
+        return await vscode.workspace.openTextDocument(solution_uri);
     }
 
 
@@ -299,8 +264,11 @@ export class EditorModel implements vscode.Disposable {
      */
     private onMessage(message: any): void {
         KoanLog.info([EditorModel, this.onMessage], 'Command:', message.command);
-
         switch (message.command) {
+            case WebCommands.Data_Ready:
+                this.handle_ready();
+                break;
+
             case WebCommands.Document_Update:
                 this.handle_UpdateTextDocument(this.document, message.text);
                 break;
@@ -348,7 +316,8 @@ export class EditorModel implements vscode.Disposable {
             document.positionAt(document.getText().length)
         );
         edit.replace(document.uri, fullRange, value);
-        return vscode.workspace.applyEdit(edit);
+        vscode.workspace.applyEdit(edit);
+        return vscode.workspace.save(document.uri);
     }
 
 
