@@ -2,7 +2,7 @@ import { vscode } from './services/vscode';
 import { KoanChallengeElement } from './components/challenge';
 import { WebCommands, WebMessage, InitializeCommand, CodeUpdateCommand } from '../../shared/messaging';
 import { TestSuite } from '../../shared/testing';
-import { file_details_render } from './components/file-details';
+import { DocumentMetaElement } from './components/file-details';
 
 
 export class App {
@@ -10,7 +10,8 @@ export class App {
         console.log('app::constructor');
 
         // Register custom HTML elements.
-        customElements.define('koan-challenge', KoanChallengeElement);
+        KoanChallengeElement.define();
+        DocumentMetaElement.define();
         window.addEventListener('message', (event) => this.onMessage(event));
     }
 
@@ -39,26 +40,13 @@ export class App {
 
     // New function to populate the UI with data.
     private onMessage_Initialize(data: InitializeCommand): void {
+        App.init_Welcome(document.body, data);
 
         // Populate the document details.
-        const detailsContainer = document.getElementById('document-details');
-        if (detailsContainer) {
-            detailsContainer.innerHTML = file_details_render(data);
-        }
+        App.init_MetaContainer(document.body, data);
 
         // Populate the challenges container.
-        const challengesContainer = document.getElementById('challenges-container');
-        if (challengesContainer) {
-            // Clear existing content.
-            challengesContainer.innerHTML = '';
-
-            // Add each challenge using the custom element.
-            data.challenges.forEach(challenge => {
-                const challengeElement: KoanChallengeElement = document.createElement('koan-challenge') as KoanChallengeElement;
-                challengeElement.challenge = challenge;
-                challengesContainer.appendChild(challengeElement);
-            });
-        }
+        App.init_ChallengeContainer(document.body, data);
 
         // TODO: This might be too naive of a way to grab this text area.
         // Set up event listener for the textarea.
@@ -73,6 +61,66 @@ export class App {
         }
         this.setup_global_handlers();
         this.applyInputHandlers();
+    }
+
+
+
+    private static init_Welcome(body: HTMLElement, data: InitializeCommand) {
+        const welcome = document.createElement('div');
+        body.appendChild(welcome);
+
+        const header = document.createElement('h1');
+        header.textContent = 'Python Workbook';
+        welcome.appendChild(header);
+
+        const documentation = document.createElement('p');
+        documentation.setAttribute('id', 'module-docstring');
+        documentation.innerHTML = 'The Python module <code>docstring</code> will be loaded in here.';
+        welcome.appendChild(documentation);
+    }
+
+
+    private static init_ChallengeContainer(body: HTMLElement, data: InitializeCommand) {
+        const section = document.createElement('div');
+        body.appendChild(section);
+
+        const header = document.createElement('h1');
+        header.innerText = 'Challenges';
+        section.appendChild(header);
+
+        const challenges_container = document.createElement('div');
+        section.setAttribute('id', 'challenges-container');
+        section.appendChild(challenges_container);
+
+        // Add each challenge using the custom element.
+        data.challenges.forEach(challenge => {
+            const challengeElement: KoanChallengeElement = KoanChallengeElement.create();
+            challengeElement.challenge = challenge;
+            challenges_container.appendChild(challengeElement);
+        });
+
+    }
+
+
+    private static init_MetaContainer(body: HTMLElement, data: InitializeCommand): void {
+        const container = document.createElement('div');
+        body.appendChild(container);
+
+        const title = document.createElement('h1');
+        title.innerText = 'Document Meta';
+        container.appendChild(title);
+
+        const items = document.createElement('div');
+        container.setAttribute('id', 'document-details');
+        container.appendChild(items);
+
+        const manifestElement: DocumentMetaElement = DocumentMetaElement.create();
+        manifestElement.info = data.documentInfo;
+        items.appendChild(manifestElement);
+
+        const exerciseElement: DocumentMetaElement = DocumentMetaElement.create();
+        exerciseElement.info = data.pythonDocumentInfo;
+        items.appendChild(exerciseElement);
     }
 
 

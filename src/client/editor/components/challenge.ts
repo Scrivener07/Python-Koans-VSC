@@ -1,13 +1,23 @@
 import { vscode } from '../services/vscode';
 import * as monaco from 'monaco-editor';
-import { Challenge, WebCommands } from "../../../shared/messaging";
+import { Challenge, InitializeCommand, WebCommands } from "../../../shared/messaging";
 import { StatusIcon, TestCase, TestStatus, TestSuite } from "../../../shared/testing";
 
 /** Define a custom HTML element for challenges. */
 export class KoanChallengeElement extends HTMLElement {
 
+    public static readonly HTML_TAG: string = 'koan-challenge';
+
+
     /** The challenge data to use. */
     private _challenge: Challenge;
+    get challenge(): Challenge { return this._challenge; }
+    set challenge(value: Challenge) {
+        this._challenge = value;
+        if (this.isConnected) {
+            this.innerHTML = this.createTemplate();
+        }
+    }
 
     private outputPanel: HTMLElement | null = null;
     private resultPanel: HTMLElement | null = null;
@@ -26,15 +36,18 @@ export class KoanChallengeElement extends HTMLElement {
     }
 
 
-    get challenge(): Challenge { return this._challenge; }
-    set challenge(value: Challenge) {
-        this._challenge = value;
-        // Update UI if already connected.
-        if (this.isConnected) {
-            this.innerHTML = this.createTemplate();
-        }
+    public static define(): void {
+        customElements.define(KoanChallengeElement.HTML_TAG, KoanChallengeElement);
     }
 
+
+    public static create(): KoanChallengeElement {
+        return document.createElement(KoanChallengeElement.HTML_TAG) as KoanChallengeElement;
+    }
+
+
+    // DOM
+    //--------------------------------------------------
 
     public override connectedCallback(): void {
         this.setAttribute('data-challenge-id', this._challenge.name);

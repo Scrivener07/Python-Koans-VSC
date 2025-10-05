@@ -109,24 +109,10 @@ export class EditorModel implements vscode.Disposable {
             <link rel="stylesheet" href="${common_css}">
             <link rel="stylesheet" href="${editor_css}">
             <data id="monaco-worker-base-path" value="${workerBaseUrl}"></data>
-            <title>Python Koan Editor</title>
+            <title>Python Workbook</title>
         </head>
 
         <body>
-            <h1>Python Koan Editor</h1>
-
-            <p id="module-docstring">The Python module <code>docstring</code> will be loaded in here.</p>
-
-            <h1>Document</h1>
-            <div id="document-details">
-                <p>Loading document details...</p>
-            </div>
-
-            <h1>Challenges</h1>
-            <div id="challenges-container">
-                <p>Loading challenges from Python members...</p>
-            </div>
-
             <script type="module" src="${script_js}"></script>
         </body>
         </html>`;
