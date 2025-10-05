@@ -1,6 +1,6 @@
 import { vscode } from './services/vscode';
-import { KoanChallengeElement } from './challenge';
-import { WebCommands, WebMessage, InitializeCommand } from '../../shared/messaging';
+import { KoanChallengeElement } from './components/challenge';
+import { WebCommands, WebMessage, InitializeCommand, CodeUpdateCommand } from '../../shared/messaging';
 import { TestSuite } from '../../shared/testing';
 import { file_details_render } from './components/file-details';
 
@@ -11,27 +11,7 @@ export class App {
 
         // Register custom HTML elements.
         customElements.define('koan-challenge', KoanChallengeElement);
-        window.addEventListener('load', (event) => this.onWindowLoad(event));
-        document.addEventListener('DOMContentLoaded', (event) => this.onDOMContentLoaded(event));
         window.addEventListener('message', (event) => this.onMessage(event));
-    }
-
-
-    public start(): void {
-        console.log('app::start');
-    }
-
-
-    // Browser
-    //--------------------------------------------------
-
-    private async onDOMContentLoaded(event: Event): Promise<void> {
-        console.log('app:dom::DOMContentLoaded');
-    }
-
-
-    private onWindowLoad(event: Event): void {
-        console.log('app:window::load');
     }
 
 
@@ -113,40 +93,25 @@ export class App {
 
     /** Apply input handlers to every code text area. */
     private applyInputHandlers(): void {
-        // document.querySelectorAll('.code-input').forEach((editor) => {
-        //     editor.addEventListener('input', (event) => {
-        //         const target = event.target as HTMLTextAreaElement;
-        //         const challengeDiv = target.closest('[data-challenge-id]');
-        //         if (!challengeDiv) {
-        //             return;
-        //         }
-        //         const challengeId = challengeDiv.getAttribute('data-challenge-id');
-        //         if (challengeId) {
-        //             // Use the debounced handler instead of direct message sending.
-        //             handleCodeEditorChange(challengeId, target.value);
-        //         }
-        //     });
-        // });
-
-
         document.addEventListener('editor-change', (event: Event) => {
             const customEvent = event as CustomEvent;
             if (customEvent.detail) {
-                this.handleCodeEditorChange(customEvent.detail.challengeId, customEvent.detail.code);
+                const message = App.Code_Update_New(customEvent.detail.challengeId, customEvent.detail.code);
+                this.handleCodeEditorChange(message);
             }
         });
 
     }
 
 
-    // Debounce Input
+    // Input: Debounce
     //--------------------------------------------------
 
     /** The input debounce timer to use. */
     private updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
     /** The input debouce handler to use. */
-    private handleCodeEditorChange(challengeId: string, newCode: string): void {
+    private handleCodeEditorChange(message: CodeUpdateCommand): void {
         // Clear previous timeout.
         if (this.updateTimeout) {
             clearTimeout(this.updateTimeout);
@@ -154,12 +119,25 @@ export class App {
         // Set new timeout (ms delay).
         const delay: number = 1000;
         this.updateTimeout = setTimeout(() => {
-            vscode.postMessage({
-                command: WebCommands.Code_Update,
-                member_id: challengeId,
-                code: newCode
-            });
+            vscode.postMessage(message);
         }, delay);
+    }
+
+
+
+    // Messaging: Code Update
+    //--------------------------------------------------
+
+    private static Code_Update_Send(message: CodeUpdateCommand): void {
+        vscode.postMessage(message);
+    }
+
+    private static Code_Update_New(challengeId: string, newCode: string): CodeUpdateCommand {
+        return {
+            command: WebCommands.Code_Update,
+            member_id: challengeId,
+            code: newCode
+        };
     }
 
 
@@ -232,7 +210,6 @@ export class App {
             member_id: member_id
         });
     }
-
 
 
     // Command Response Handlers

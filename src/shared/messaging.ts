@@ -41,6 +41,13 @@ export interface InitializeCommand extends WebCommand {
 }
 
 
+export interface CodeUpdateCommand extends WebCommand {
+    command: WebCommands.Code_Update;
+    member_id: string;
+    code: string;
+}
+
+
 export interface CodeRunCommand extends WebCommand {
     command: WebCommands.Code_RunTests;
     member_id: string;

@@ -1,7 +1,7 @@
-import { vscode } from './services/vscode';
+import { vscode } from '../services/vscode';
 import * as monaco from 'monaco-editor';
-import { Challenge, WebCommands } from "../../shared/messaging";
-import { StatusIcon, TestCase, TestStatus, TestSuite } from "../../shared/testing";
+import { Challenge, WebCommands } from "../../../shared/messaging";
+import { StatusIcon, TestCase, TestStatus, TestSuite } from "../../../shared/testing";
 
 /** Define a custom HTML element for challenges. */
 export class KoanChallengeElement extends HTMLElement {

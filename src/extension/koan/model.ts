@@ -108,6 +108,7 @@ export class EditorModel implements vscode.Disposable {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link rel="stylesheet" href="${common_css}">
             <link rel="stylesheet" href="${editor_css}">
+            <data id="monaco-worker-base-path" value="${workerBaseUrl}"></data>
             <title>Python Koan Editor</title>
         </head>
 
@@ -125,10 +126,6 @@ export class EditorModel implements vscode.Disposable {
             <div id="challenges-container">
                 <p>Loading challenges from Python members...</p>
             </div>
-
-            <script>
-                window.monacoWorkerBasePath = "${workerBaseUrl}";
-            </script>
 
             <script type="module" src="${script_js}"></script>
         </body>
@@ -317,7 +314,9 @@ export class EditorModel implements vscode.Disposable {
         );
         edit.replace(document.uri, fullRange, value);
         vscode.workspace.applyEdit(edit);
-        return vscode.workspace.save(document.uri);
+
+        // TODO: The document will not actually save.
+        // return document.save();
     }
 
 

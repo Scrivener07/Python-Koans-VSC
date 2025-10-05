@@ -1,37 +1,60 @@
-// Monaco Configuration
-//--------------------------------------------------
 declare global {
     interface Window {
-        monacoWorkerBasePath?: string;
+        /** Stores any custom configurations used for Monaco editor. */
+        MonacoConfiguration?: IMonacoConfiguration;
+
+        /** Required, Monaco searches for `MonacoEnvironment` to provide a worker factory implementation. */
+        MonacoEnvironment?: IMonacoEnvironment;
     }
 }
 
 
-export function setupMonaco() {
-    if (window.monacoWorkerBasePath) {
-        setupMonacoWorkers(window.monacoWorkerBasePath);
+export function monacoSetup(): void {
+    self.MonacoConfiguration = setupConfiguration();
+    self.MonacoEnvironment = setupEnvironment(self.MonacoConfiguration.basePath);
+}
+
+
+// Monaco Configuration
+//--------------------------------------------------
+
+const MONACO_DATA_BASE_PATH: string = 'monaco-worker-base-path';
+
+interface IMonacoConfiguration {
+    basePath: string;
+}
+
+
+function setupConfiguration(): IMonacoConfiguration {
+    // Get worker path from data element.
+    const dataElement = document.getElementById(MONACO_DATA_BASE_PATH);
+    const workerBasePath = dataElement?.getAttribute('value');
+    if (!workerBasePath) {
+        throw new Error("The provided worker base path cannot be undefined.");
     }
+    return {
+        basePath: workerBasePath
+    };
 }
 
 
 // Monaco Environment
 //--------------------------------------------------
 
-// Extend the Window interface to include MonacoEnvironment.
-declare global {
-    interface Window {
-        MonacoEnvironment?: any;
-    }
+interface IMonacoEnvironment {
+    /** Provides a web worker factory implementation.
+     * In this case, creates a blob with worker code for a same-origin worker to avoid cross-origin complexities. */
+    getWorker(moduleId: string, label: string): Worker;
 }
 
 
 // Method for loading Monaco workers.
-function setupMonacoWorkers(basePath: string): void {
-    self.MonacoEnvironment = {
+function setupEnvironment(workerBasePath: string): IMonacoEnvironment {
+    return {
         getWorker: function (moduleId: string, label: string): Worker {
             // Create a Blob containing a script that imports the worker.
             const workerBlob: Blob = new Blob([
-                `importScripts('${basePath}/${label === 'python' ? 'python.worker.js' : 'editor.worker.js'}');`
+                `importScripts('${workerBasePath}/${label === 'python' ? 'python.worker.js' : 'editor.worker.js'}');`
             ], {
                 type: 'application/javascript'
             });
