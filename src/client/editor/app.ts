@@ -1,7 +1,6 @@
 import { vscode } from './services/vscode';
 import { KoanChallengeElement } from './components/challenge';
-import { WebCommands, WebMessage, InitializeCommand, CodeUpdateCommand } from '../../shared/messaging';
-import { TestSuite } from '../../shared/testing';
+import { WebCommands, WebMessage, InitializeCommand, CodeUpdateCommand, OutputUpdateCommand } from '../../shared/messaging';
 import { DocumentMetaElement } from './components/file-details';
 
 
@@ -20,17 +19,21 @@ export class App {
     //--------------------------------------------------
 
     private onMessage(event: MessageEvent<any>): void {
-        console.log('Message received from extension:', event.data);
+        if ('vscodeScheduleAsyncWork' in event.data) {
+            // Filter out VS Code's internal scheduling messages.
+            return;
+        }
+
         const message = event.data as WebMessage;
         switch (message.command) {
             case WebCommands.Data_Initialize:
                 this.onMessage_Initialize(message);
                 break;
             case WebCommands.Output_Update:
-                this.onMessage_OutputUpdate(message.suite);
+                this.onMessage_OutputUpdate(message);
                 break;
             default:
-                console.log('Unknown message from extension:', message);
+                console.warn('Unknown message from extension:', message);
         }
     }
 
@@ -59,21 +62,21 @@ export class App {
                 });
             });
         }
-        this.setup_global_handlers();
+        // this.setup_global_handlers();
         this.applyInputHandlers();
     }
 
 
 
     private static init_Welcome(body: HTMLElement, data: InitializeCommand) {
-        const welcome = document.createElement('div');
+        const welcome: HTMLDivElement = document.createElement('div');
         body.appendChild(welcome);
 
-        const header = document.createElement('h1');
+        const header: HTMLHeadingElement = document.createElement('h1');
         header.textContent = 'Python Workbook';
         welcome.appendChild(header);
 
-        const documentation = document.createElement('p');
+        const documentation: HTMLParagraphElement = document.createElement('p');
         documentation.setAttribute('id', 'module-docstring');
         documentation.innerHTML = 'The Python module <code>docstring</code> will be loaded in here.';
         welcome.appendChild(documentation);
@@ -81,14 +84,14 @@ export class App {
 
 
     private static init_ChallengeContainer(body: HTMLElement, data: InitializeCommand) {
-        const section = document.createElement('div');
+        const section: HTMLDivElement = document.createElement('div');
         body.appendChild(section);
 
-        const header = document.createElement('h1');
+        const header: HTMLHeadingElement = document.createElement('h1');
         header.innerText = 'Challenges';
         section.appendChild(header);
 
-        const challenges_container = document.createElement('div');
+        const challenges_container: HTMLDivElement = document.createElement('div');
         section.setAttribute('id', 'challenges-container');
         section.appendChild(challenges_container);
 
@@ -103,14 +106,14 @@ export class App {
 
 
     private static init_MetaContainer(body: HTMLElement, data: InitializeCommand): void {
-        const container = document.createElement('div');
+        const container: HTMLDivElement = document.createElement('div');
         body.appendChild(container);
 
-        const title = document.createElement('h1');
+        const title: HTMLHeadingElement = document.createElement('h1');
         title.innerText = 'Document Meta';
         container.appendChild(title);
 
-        const items = document.createElement('div');
+        const items: HTMLDivElement = document.createElement('div');
         container.setAttribute('id', 'document-details');
         container.appendChild(items);
 
@@ -121,18 +124,6 @@ export class App {
         const exerciseElement: DocumentMetaElement = DocumentMetaElement.create();
         exerciseElement.info = data.pythonDocumentInfo;
         items.appendChild(exerciseElement);
-    }
-
-
-    private setup_global_handlers(): void {
-        const win: any = window as any;
-        win.runChallenge = this.Code_RunTest;
-        win.openCodeCell = this.Code_OpenVirtual;
-        win.toggleChallenge = this.onClick_InstructionToggle;
-        win.resetChallenge = this.Code_Reset;
-        win.formatCode = this.Code_Format;
-        win.clearOutput = this.Output_Clear;
-        win.clearResults = this.Results_Clear;
     }
 
 
@@ -189,90 +180,20 @@ export class App {
     }
 
 
-    // Button Handlers
-    //--------------------------------------------------
-
-    // Challenge Functions
-    private Code_RunTest(member_id: string): void {
-        vscode.postMessage({
-            command: WebCommands.Code_RunTests,
-            member_id: member_id
-        });
-    }
-
-    private Code_OpenVirtual(member_id: string): void {
-        vscode.postMessage({
-            command: WebCommands.Code_OpenVirtual,
-            member_id: member_id
-        });
-    }
-
-    private onClick_InstructionToggle(challenge_id: string): void {
-        const instructionsElem = document.getElementById(`${challenge_id}_instructions`);
-        if (instructionsElem) {
-            instructionsElem.classList.toggle('expanded');
-        }
-    }
-
-    private Code_Reset(member_id: string): void {
-        vscode.postMessage({
-            command: WebCommands.Code_Reset,
-            member_id: member_id
-        });
-    }
-
-    private Code_Format(member_id: string): void {
-        vscode.postMessage({
-            command: WebCommands.Code_Format,
-            member_id: member_id
-        });
-    }
-
-    // OBSOLETE
-    private Output_Clear(member_id: string): void {
-        const outputElement = document.getElementById(`${member_id}_output`);
-        if (outputElement) {
-            outputElement.innerHTML = '<div class="output-placeholder">Run tests to see results here...</div>';
-        }
-
-        vscode.postMessage({
-            command: WebCommands.Output_Clear,
-            member_id: member_id
-        });
-    }
-
-    // Clears both results and standard output.
-    private Results_Clear(member_id: string): void {
-        const resultsElement = document.getElementById(`${member_id}_results`);
-        if (resultsElement) {
-            resultsElement.innerHTML = '<div class="results-placeholder">Run tests to see results here...</div>';
-        }
-
-        const stdoutElement = document.getElementById(`${member_id}_stdout`);
-        if (stdoutElement) {
-            stdoutElement.innerHTML = '<div class="output-placeholder">No output from your code yet...</div>';
-        }
-
-        vscode.postMessage({
-            command: WebCommands.Output_Clear,
-            member_id: member_id
-        });
-    }
-
 
     // Command Response Handlers
     //--------------------------------------------------
 
-    private onMessage_OutputUpdate(suite: TestSuite): void {
-        const member_id: string = suite.cases[0].member_id;
-        const challengeElement: KoanChallengeElement | null = this.getChallenge(member_id);
+    private onMessage_OutputUpdate(message: OutputUpdateCommand): void {
+        const member_id: string = message.suite.cases[0].member_id;
+        const challengeElement: KoanChallengeElement | null = App.getChallenge(member_id);
         if (challengeElement) {
-            challengeElement.update(suite);
+            challengeElement.update(message.suite);
         }
     }
 
 
-    private getChallenge(member_id: string): KoanChallengeElement | null {
+    private static getChallenge(member_id: string): KoanChallengeElement | null {
         return document.querySelector(`koan-challenge[data-challenge-id="${member_id}"]`) as KoanChallengeElement;
     }
 
