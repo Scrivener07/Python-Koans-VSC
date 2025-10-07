@@ -1,7 +1,7 @@
 import { vscode } from '../services/vscode';
-import * as monaco from 'monaco-editor';
-import { Challenge, InitializeCommand, WebCommands } from "../../../shared/messaging";
+import { Challenge, WebCommands } from "../../../shared/messaging";
 import { StatusIcon, TestCase, TestStatus, TestSuite } from "../../../shared/testing";
+import { CodeEditorEvents, HTMLCodeEditor } from './code-editor';
 
 /** Define a custom HTML element for challenges. */
 export class KoanChallengeElement extends HTMLElement {
@@ -24,10 +24,6 @@ export class KoanChallengeElement extends HTMLElement {
 
     /** The panel for test result data. */
     private resultPanel: HTMLElement | null = null;
-
-    /** The Monaco code editor element. */
-    private editor: monaco.editor.IStandaloneCodeEditor | undefined;
-    private disposables: monaco.IDisposable[] = [];
 
 
     constructor() {
@@ -61,72 +57,33 @@ export class KoanChallengeElement extends HTMLElement {
         const template = this.createTemplate();
         this.appendChild(template);
 
-        // Initialize Monaco after DOM is ready.
-        setTimeout(() => this.initMonaco(), 0);
+        // // Initialize Monaco after DOM is ready.
+        // setTimeout(() => this.initMonaco(), 0);
 
         // Cache references to frequently accessed elements.
-        this.outputPanel = this.querySelector(`#${this.challenge.name}_stdout`);
-        this.resultPanel = this.querySelector(`#${this.challenge.name}_results`);
+        this.outputPanel = this.get_OutputPanel();
+        this.resultPanel = this.get_ResultPanel();
     }
 
 
-    // Action Methods
-    //--------------------------------------------------
-
-    private runChallenge(): void {
-        vscode.postMessage({
-            command: WebCommands.Code_RunTests,
-            member_id: this.challenge.name
-        });
+    private get_InstructionPanel(): HTMLElement | null {
+        return this.querySelector(`#${this.challenge.name}_instructions`);
     }
 
-
-    private openCodeCell(): void {
-        vscode.postMessage({
-            command: WebCommands.Code_OpenVirtual,
-            member_id: this.challenge.name
-        });
+    private get_OutputPanel(): HTMLElement | null {
+        return this.querySelector(`#${this.challenge.name}_stdout`);
     }
 
-
-    private toggleInstructions(): void {
-        const instructionsElem = this.querySelector(`#${this.challenge.name}_instructions`);
-        if (instructionsElem) {
-            instructionsElem.classList.toggle('expanded');
-        }
+    private get_ResultPanel(): HTMLElement | null {
+        return this.querySelector(`#${this.challenge.name}_results`);
     }
 
-
-    private resetCode(): void {
-        vscode.postMessage({
-            command: WebCommands.Code_Reset,
-            member_id: this.challenge.name
-        });
+    private get_StatusIndicator(): HTMLElement | null {
+        return this.querySelector('.challenge-status');
     }
 
-
-
-    private formatCode(): void {
-        vscode.postMessage({
-            command: WebCommands.Code_Format,
-            member_id: this.challenge.name
-        });
-    }
-
-
-    // Clears both results and standard output.
-    public clearResults(): void {
-        if (this.outputPanel) {
-            this.outputPanel.innerHTML = '<div class="output-placeholder">No output from your code yet...</div>';
-        }
-
-        if (this.resultPanel) {
-            this.resultPanel.innerHTML = '<div class="results-placeholder">Run tests to see results here...</div>';
-        }
-        vscode.postMessage({
-            command: WebCommands.Output_Clear,
-            member_id: this.challenge.name
-        });
+    private get_CodePanel(): HTMLElement | null {
+        return this.querySelector<HTMLElement>(`#${this._challenge.name}_editor`);
     }
 
 
@@ -267,15 +224,25 @@ export class KoanChallengeElement extends HTMLElement {
             formatBtn.appendChild(formatIcon);
 
             // Editor container
-            const editorContainer: HTMLDivElement = document.createElement('div');
-            editorContainer.className = 'code-editor';
-            editorContainer.id = `${this.challenge.name}_editor`;
-            codeSection.appendChild(editorContainer);
+            const codeEditor: HTMLCodeEditor = HTMLCodeEditor.create(this.challenge.code);
+            codeEditor.id = `${this.challenge.name}_editor`;
+            let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+            codeEditor.addEventListener(CodeEditorEvents.CONTENT_CHANGED, (event: Event) => {
+                const customEvent = event as CustomEvent;
 
-            const codeElement: HTMLPreElement = document.createElement('pre');
-            codeElement.id = `${this.challenge.name}_code`;
-            codeElement.textContent = this.challenge.code;
-            editorContainer.appendChild(codeElement);
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                }
+
+                debounceTimer = setTimeout(() => {
+                    vscode.postMessage({
+                        command: WebCommands.Code_Update,
+                        member_id: this.challenge.name,
+                        code: customEvent.detail.value
+                    });
+                }, 2000);
+            });
+            codeSection.appendChild(codeEditor);
         }
 
         // Output section
@@ -349,6 +316,65 @@ export class KoanChallengeElement extends HTMLElement {
     }
 
 
+    // Action Methods
+    //--------------------------------------------------
+
+    private runChallenge(): void {
+        vscode.postMessage({
+            command: WebCommands.Code_RunTests,
+            member_id: this.challenge.name
+        });
+    }
+
+
+    private openCodeCell(): void {
+        vscode.postMessage({
+            command: WebCommands.Code_OpenVirtual,
+            member_id: this.challenge.name
+        });
+    }
+
+
+    private toggleInstructions(): void {
+        const instructionPanel = this.get_InstructionPanel();
+        if (instructionPanel) {
+            instructionPanel.classList.toggle('expanded');
+        }
+    }
+
+
+    private resetCode(): void {
+        vscode.postMessage({
+            command: WebCommands.Code_Reset,
+            member_id: this.challenge.name
+        });
+    }
+
+
+    private formatCode(): void {
+        vscode.postMessage({
+            command: WebCommands.Code_Format,
+            member_id: this.challenge.name
+        });
+    }
+
+
+    // Clears both results and standard output.
+    public clearResults(): void {
+        if (this.outputPanel) {
+            this.outputPanel.innerHTML = '<div class="output-placeholder">No output from your code yet...</div>';
+        }
+
+        if (this.resultPanel) {
+            this.resultPanel.innerHTML = '<div class="results-placeholder">Run tests to see results here...</div>';
+        }
+        vscode.postMessage({
+            command: WebCommands.Output_Clear,
+            member_id: this.challenge.name
+        });
+    }
+
+
     // Data
     //--------------------------------------------------
 
@@ -397,7 +423,7 @@ export class KoanChallengeElement extends HTMLElement {
         }
 
         // Update status indicator
-        const statusIndicator = this.querySelector('.challenge-status');
+        const statusIndicator = this.get_StatusIndicator();
         if (statusIndicator) {
             const resultClass = suite.status === TestStatus.Passed ? 'pass' : 'fail';
             const icon = suite.status === TestStatus.Passed ? StatusIcon.Passed : StatusIcon.Failed;
@@ -410,93 +436,13 @@ export class KoanChallengeElement extends HTMLElement {
     // Monaco
     //--------------------------------------------------
 
-    // Initialize Monaco editor
-    private initMonaco(): void {
-        const editorContainer = this.querySelector<HTMLElement>(`#${this._challenge.name}_editor`);
-        if (!editorContainer) { return; }
 
-        editorContainer.innerHTML = '';
 
-        // Get VS Code's current theme information.
-        const isDarkTheme = document.body.classList.contains('vscode-dark');
 
-        // Create Monaco editor.
-        this.editor = monaco.editor.create(editorContainer, {
-            value: this._challenge.code || '',
-            language: 'python',
-            theme: isDarkTheme ? 'vs-dark' : 'vs',
-            automaticLayout: true,
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            lineNumbers: 'on',
-            scrollbar: {
-                vertical: 'auto',
-                horizontal: 'auto'
-            },
-            lineHeight: 18,
-            padding: { top: 8, bottom: 8 },
-            fontSize: 13,
-            renderLineHighlight: 'all',
-            tabSize: 4,
-            insertSpaces: true,
-            fontFamily: 'var(--vscode-editor-font-family)',
-            contextmenu: false
-        });
 
-        // Listen for changes.
-        this.disposables.push(
-            this.editor.onDidChangeModelContent(() => {
-                if (!this.editor) { return; }
-                const code = this.editor.getValue();
 
-                // Use existing debounce mechanism.
-                vscode.postMessage({
-                    command: WebCommands.Code_Update,
-                    member_id: this._challenge.name,
-                    code: code
-                });
-            })
-        );
 
-        // Add listener for theme changes.
-        // window.addEventListener('message', this.handleThemeChange.bind(this));
-    }
 
-    // private disposeMonaco(): void {
-    //     if (this.editor) {
-    //         this.editor.dispose();
-    //         this.editor = undefined;
-    //     }
-
-    //     this.disposables.forEach(item => item.dispose());
-    //     this.disposables = [];
-    // }
-
-    // private handleThemeChange(event: MessageEvent): void {
-    //     const message = event.data;
-    //     if (message.type === 'vscode-theme-changed') {
-    //         if (!this.editor) { return; }
-    //         const isDarkTheme = message.theme.includes('dark') || message.theme.includes('black');
-    //         monaco.editor.setTheme(isDarkTheme ? 'vs-dark' : 'vs');
-    //     }
-    // }
-
-    // private updateCode(code: string): void {
-    //     if (this.editor) {
-    //         this.editor.setValue(code);
-    //     }
-    // }
-
-    // private getCode(): string {
-    //     return this.editor ? this.editor.getValue() : '';
-    // }
-
-    // This is an override!
-    // private focus(): void {
-    //     if (this.editor) {
-    //         this.editor.focus();
-    //     }
-    // }
 
 
 }

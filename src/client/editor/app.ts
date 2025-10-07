@@ -2,6 +2,7 @@ import { vscode } from './services/vscode';
 import { KoanChallengeElement } from './components/challenge';
 import { WebCommands, WebMessage, InitializeCommand, CodeUpdateCommand, OutputUpdateCommand } from '../../shared/messaging';
 import { DocumentMetaElement } from './components/file-details';
+import { HTMLCodeEditor } from './components/code-editor';
 
 
 export class App {
@@ -11,6 +12,7 @@ export class App {
         // Register custom HTML elements.
         KoanChallengeElement.define();
         DocumentMetaElement.define();
+        HTMLCodeEditor.define();
         window.addEventListener('message', (event) => this.onMessage(event));
     }
 
